@@ -194,7 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(disabled("🎉 \(currentStatus.celebrateReason ?? "Free flush!")  ·  enjoy it"))
             menu.addItem(NSMenuItem.separator())
         }
-        menu.addItem(disabled("ClaudeMeter — \(currentStatus.detail)"))
+        menu.addItem(disabled("ClaudeMeter: \(currentStatus.detail)"))
         if !currentStatus.metrics.isEmpty {
             menu.addItem(NSMenuItem.separator())
             for metric in currentStatus.metrics {
@@ -256,7 +256,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // Fire means "on track to blow the weekly budget" — but being nearly
+        // Leaving a party: drop any rainbow-attributed string so the cell
+        // regenerates from the plain title below (attributedTitle is
+        // non-optional, so clear it with an empty string, not nil).
+        button.attributedTitle = NSAttributedString(string: "")
+
+        // Fire means "on track to blow the weekly budget", but being nearly
         // maxed right now (raw red) is more urgent, so that wins.
         let rawCritical = (currentStatus.percent ?? 0) >= 90
         if !rawCritical && paceIsHot() {

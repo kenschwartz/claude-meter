@@ -46,7 +46,7 @@ struct MacStatus {
     /// Set while a "free flush" party is live. The Swift menu bar animates
     /// fireworks + rainbow text until weekly usage climbs back past the stop
     /// threshold. None the rest of the time.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     celebrate: Option<Celebrate>,
 }
 
@@ -664,6 +664,18 @@ mod tests {
     }
 
     #[test]
+    fn test_is_flush_flat_zero() {
+        // Both readings at 0%: no delta, no party.
+        assert!(!is_flush(0.0, 0.0, false, 15.0));
+    }
+
+    #[test]
+    fn test_is_flush_rising_utilization() {
+        // Utilization went UP (negative drop): never a flush.
+        assert!(!is_flush(10.0, 40.0, false, 15.0));
+    }
+
+    #[test]
     fn test_reset_delta_seconds_holds_vs_advances() {
         let a = "2026-06-18T04:00:00+00:00";
         let b = "2026-06-18T03:59:59+00:00";
@@ -672,5 +684,15 @@ mod tests {
         // Anchor advanced ~7 days.
         let later = "2026-06-25T04:00:00+00:00";
         assert!(reset_delta_seconds(later, a).unwrap() > 600_000);
+    }
+
+    #[test]
+    fn test_reset_delta_seconds_equal_and_bad() {
+        // Identical timestamps: zero delta, treated as anchor held.
+        let t = "2026-06-18T04:00:00+00:00";
+        assert_eq!(reset_delta_seconds(t, t), Some(0));
+        // Unparseable input yields None rather than panicking.
+        assert_eq!(reset_delta_seconds("not-a-date", t), None);
+        assert_eq!(reset_delta_seconds(t, ""), None);
     }
 }

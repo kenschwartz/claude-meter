@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Review: feat/free-flush-celebration</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --fg: #e6edf3;
+  --muted: #9da7b3;
+  --accent: #2f81f7;
+  --warn: #f0883e;
+  --ok: #3fb950;
+  --danger: #f85149;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding: 32px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+h1 { font-size: 22px; margin-bottom: 4px; }
+h2 { font-size: 17px; margin: 28px 0 10px; color: var(--accent); }
+h3 { font-size: 15px; margin: 20px 0 8px; color: var(--fg); }
+p, li { color: var(--muted); line-height: 1.6; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { font: 13px ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; }
+pre { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px; padding: 12px; overflow-x: auto; font: 13px ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+.verdict { display: inline-block; font-weight: 600; font-size: 18px; padding: 6px 20px; border-radius: 24px; margin: 12px 0; }
+.verdict.mwf { background: rgba(240, 136, 62, 0.15); color: var(--warn); border: 1px solid var(--warn); }
+.verdict.merge { background: rgba(63, 185, 80, 0.15); color: var(--ok); border: 1px solid var(--ok); }
+.verdict.rework { background: rgba(248, 81, 73, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+
+.meta { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 16px 0 24px; }
+.meta dt { color: var(--muted); font-size: 13px; }
+.meta dd { font-size: 14px; }
+
+table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+td { font-size: 14px; }
+td:first-child { white-space: nowrap; font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+.badge.pass { background: rgba(63,185,80,0.15); color: var(--ok); }
+.badge.fail { background: rgba(248,81,73,0.15); color: var(--danger); }
+.badge.partial { background: rgba(240,136,62,0.15); color: var(--warn); }
+.finding { margin: 6px 0; }
+.finding strong { color: var(--fg); }
+ol.followups { padding-left: 20px; }
+ol.followups li { margin: 8px 0; }
+ol.followups li strong { color: var(--fg); }
+.severity { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.3px; margin-left: 4px; }
+.severity.low { background: rgba(139,148,158,0.2); color: var(--muted); }
+.severity.med { background: rgba(240,136,62,0.15); color: var(--warn); }
+.severity.high { background: rgba(248,81,73,0.15); color: var(--danger); }
+</style>
+</head>
+<body>
+
+<h1>Code Review: <code>feat/free-flush-celebration</code></h1>
+
+<span class="verdict mwf">MERGE WITH FOLLOWS</span>
+
+<dl class="meta">
+  <dt>Commits</dt>
+  <dd>7abd589, 2131548 (stacked on <code>fix/macos-menubar-launch</code>)</dd>
+  <dt>Diff base</dt>
+  <dd><code>fix/macos-menubar-launch</code> (2 commits, +434 -19 over 4 files)</dd>
+  <dt>Reviewer</dt>
+  <dd>Claude Code (deepseek-chat)</dd>
+  <dt>Date</dt>
+  <dd>2026-06-12</dd>
+</dl>
+
+<h2>Verdict Summary</h2>
+<p>
+The feature is functionally correct. The flush-detection state machine handles all transitions soundly, the Rust-Swift contract is aligned, the animation lifecycle is leak-free, and all build checks pass. The code is well-structured and carefully written.
+</p>
+<p>
+The "follows" are five items: one correctness margin (rainbow text may not revert cleanly on party end), one clarity issue (serde serializes <code>null</code> instead of omitting <code>celebrate</code>), one edge-case gap (negative <code>anchor_tolerance_seconds</code> has no lower floor), one test-coverage gap, and one style nit (carried-over em dash). None block the merge.
+</p>
+
+<h2>Per-Check Results</h2>
+
+<table>
+<tr><th>Check</th><th>Result</th><th>Findings</th></tr>
+
+<!-- A1 -->
+<tr><td>A1 — is_flush logic</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding">Subtraction <code>prev_util - cur_util</code> is positive when util drops, correctly requires <code>&gt;= drop_threshold</code> (default 15pp), and <code>!anchor_advanced</code> suppresses scheduled resets. Handles all boundary conditions:</p>
+<ul>
+  <li>No prev_util → detection skipped (first poll safe)</li>
+  <li>cur_util None → detection skipped (no weekly metric)</li>
+  <li>Negative delta (util rose) cannot fire (result &lt; threshold)</li>
+  <li>Both at 0% → delta 0 → no fire</li>
+</ul>
+<code>src/macos_app.rs:299-302</code>
+</td></tr>
+
+<!-- A2 -->
+<tr><td>A2 — anchor_advanced</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding"><code>reset_delta_seconds(cur, prev) = cur - prev</code>. A scheduled reset moves <code>cur</code> ~7d forward, giving delta &gt; 600k s, well above default 3600s tolerance. A free flush leaves the anchor unchanged, giving delta &lt;= 1s. Correct direction.</p>
+<p class="finding">Missing-resets_at cases (<code>_ =&gt; false</code>): safe default. First-poll-with-anchor (Some cur, None prev) cannot trigger flush because there is no prev_util either.</p>
+<code>src/macos_app.rs:265-271</code>
+</td></tr>
+
+<!-- A3 -->
+<tr><td>A3 — State machine</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding">Transitions:</p>
+<ul>
+  <li><strong>Idle → Party</strong>: is_flush() returns true on big drop + held anchor.</li>
+  <li><strong>Party → Idle</strong>: (a) anchor_advanced (scheduled reset) or (b) cur_util &gt;= stop_at_percent (default 5%).</li>
+  <li><strong>Party → Party</strong>: stays active through flat ~0% readings; end conditions are gated on <code>if st.active</code> and only fire when their predicates match.</li>
+</ul>
+<p class="finding">Cannot get stuck ON forever: worst case, a real scheduled reset advances the anchor and ends the party within 7 days. Cannot flicker — <code>is_flush</code> only fires once (the initial drop), subsequent flat readings don't re-engage it.</p>
+<code>src/macos_app.rs:273-310</code>
+</td></tr>
+
+<!-- A4 -->
+<tr><td>A4 — Persistence</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding"><code>load_celebrate_state</code>: missing file → <code>unwrap_or_default</code> (active=false). Corrupt JSON → <code>serde_json::from_str(...).ok()</code> returns None → same default. First poll cannot false-trigger because <code>last_util</code> is None.</p>
+<p class="finding"><code>save_celebrate_state</code>: silently ignores write errors. Consequence: if save fails between detection and disk, the <em>next</em> poll reloads stale state and re-detects the same flush. Harmless (user sees continuous party, one-cycle glitch max).</p>
+<code>src/macos_app.rs:336-345</code>
+</td></tr>
+
+<!-- B1 -->
+<tr><td>B1 — Config backwards compat</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding">All four new fields use <code>#[serde(default = "...")]</code> with dedicated default functions, or are covered by <code>Default for Config</code>. Old config.json without these fields deserializes correctly.</p>
+<code>src/config.rs:104-116, 169-172</code>
+</td></tr>
+
+<!-- B2 -->
+<tr><td>B2 — Config validation</td><td><span class="badge partial">PARTIAL</span></td><td>
+<p class="finding"><code>stop_at_percent.clamp(0.0, 100.0)</code> and <code>drop_threshold.clamp(1.0, 100.0)</code> are safe. <code>anchor_tolerance_seconds</code> only checks <code>&lt; 0</code> and resets to 3600. A user setting <code>0</code> is accepted without a floor — even a 1-second ISO-8601 timestamp jitter between polls would then count as "anchor advanced," prematurely ending the party. Add a minimum floor (e.g., <code>1</code>) or document the constraint.</p>
+<code>src/config.rs:228-231</code>
+</td></tr>
+
+<!-- C1 -->
+<tr><td>C1 — JSON contract</td><td><span class="badge partial">PARTIAL</span></td><td>
+<p class="finding">Field names match: Rust <code>celebrate</code> → Swift <code>object["celebrate"]</code>, Rust <code>active</code> → Swift <code>celebrate?["active"]</code>. Types align (bool, String). The <code>else</code> cascade defaults to <code>false</code>/<code>nil</code> when the block is absent — correct.</p>
+<p class="finding"><strong>Nit:</strong> <code>#[serde(default)]</code> on <code>celebrate: Option&lt;Celebrate&gt;</code> controls deserialization only. Serialization still emits <code>"celebrate": null</code> when None. Swift handles <code>null</code> correctly (<code>as? [String: Any]</code> fails → nil → false), but adding <code>skip_serializing_if = "Option::is_none"</code> would keep status.json cleaner (no noisy null key).</p>
+<code>src/macos_app.rs:49-50</code>
+</td></tr>
+
+<!-- C2 -->
+<tr><td>C2 — mark_refreshing / write_error</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding">Both <code>mark_refreshing</code> and <code>write_error</code> deserialize the existing <code>MacStatus</code> (which now includes <code>celebrate: Option&lt;Celebrate&gt;</code>), modify the error field only, and write back. The celebrate block is preserved unchanged through refresh and error cycles.</p>
+<p class="finding">Race condition (theoretical): if the agent crashes between <code>mark_refreshing</code> and the next <code>publish_status</code>, the stale celebrate block remains on disk. The Swift side reads it on its 5s cycle and shows a stale party for at most 5s after restart — self-healing, not a real concern.</p>
+<code>src/macos_app.rs:540-569</code>
+</td></tr>
+
+<!-- D1 -->
+<tr><td>D1 — Timer lifecycle</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding"><code>manageCelebrationTimer()</code> is a model of timer hygiene:</p>
+<ul>
+  <li>Guard <code>guard celebrationTimer == nil else { return }</code> prevents double-scheduling.</li>
+  <li>Weak self in the closure — no retain cycle.</li>
+  <li>Party end path explicitly invalidates + nils the timer + resets frame.</li>
+  <li><code>applicationWillTerminate</code> invalidates as a safety net.</li>
+  <li>The 5s reload timer and the 0.8s animation timer are independent — no thread conflicts (both fire on main run loop).</li>
+</ul>
+<code>macos/ClaudeMeterApp.swift:272-287</code>
+</td></tr>
+
+<!-- D2 -->
+<tr><td>D2 — Visual reversion on party end</td><td><span class="badge fail">FAIL</span></td><td>
+<p class="finding">When the party ends, <code>updateButtonAppearance</code> sets <code>button.title = "🔥 ..."</code> or <code>button.title = menuBarTitle()</code> without clearing the previously-set <code>button.attributedTitle</code>. AppKit's <code>NSButton</code> may continue displaying the last-set attributed string if the cell caches it, meaning rainbow colors could persist after the party has ended.</p>
+<p class="finding"><strong>Fix:</strong> Set <code>button.attributedTitle = nil</code> before switching to the non-celebration <code>button.title</code> assignment. This forces the cell to regenerate its attributed string from the plain title.</p>
+<code>macos/ClaudeMeterApp.swift:258-269</code>
+</td></tr>
+
+<!-- D3 -->
+<tr><td>D3 — UTF-16 range math</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding"><code>for ch in text</code> iterates Swift Characters (grapheme clusters). <code>String(ch).utf16.count</code> correctly measures each character's UTF-16 length (emojis like 🎆 are surrogate pairs = 2). <code>offset += len</code> tracks UTF-16 position accurately. All <code>NSRange</code> values are within bounds. No crash possible.</p>
+<p class="finding">The fireworks frames (🎆🎇✨🎉) are all single <code>U+1Fxxx</code> code points — no ZWJ sequences or variation selectors that would extend the UTF-16 length beyond 2.</p>
+<code>macos/ClaudeMeterApp.swift:293-307</code>
+</td></tr>
+
+<!-- D4 -->
+<tr><td>D4 — Timer interaction</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding">The 0.8s animation timer only calls <code>updateButtonAppearance()</code> — it does NOT rebuild the full NSMenu. The menu is rebuilt only on the 5s <code>reloadStatus</code> cycle (which also called <code>renderMenu</code> before this feature). The celebrate menu item (one extra line) adds negligible cost to the existing 5s rebuild. No thread-safety concerns (all on main run loop).</p>
+<code>macos/ClaudeMeterApp.swift:277-280</code>
+</td></tr>
+
+<!-- E1 -->
+<tr><td>E1 — Framework consistency</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding">All five paths that construct <code>MacStatus</code> or <code>Status</code> handle <code>celebrate</code>/<code>celebrateActive</code> correctly:</p>
+<ul>
+  <li><code>MacStatus::refreshing()</code> — celebrate: None (correct: no data yet)</li>
+  <li><code>MacStatus::error()</code> — celebrate: None (correct: no data yet)</li>
+  <li><code>publish_status()</code> — celebrates from <code>update_celebration()</code> result</li>
+  <li><code>Status.loading</code> — celebrateActive: false (correct)</li>
+  <li><code>refreshNow()</code> — preserves from <code>currentStatus</code> (party survives manual refresh)</li>
+  <li><code>reloadStatus()</code> — parsed from JSON (source of truth)</li>
+</ul>
+<p class="finding">No new desync vectors introduced.</p>
+</td></tr>
+
+<!-- E2 -->
+<tr><td>E2 — Fail-closed</td><td><span class="badge pass">PASS</span></td><td>
+<p class="finding">The celebrate feature adds zero <code>.unwrap()</code>, <code>.expect()</code>, or index operations that could panic. All fallible operations use <code>.ok()</code> guards and sensible defaults. If detection logic crashes (it can't — pure math + Option chaining), the poll loop is unaffected. The feature passes the "if everything breaks, the app keeps polling" test.</p>
+</td></tr>
+
+<!-- F1 -->
+<tr><td>F1 — Test quality</td><td><span class="badge partial">PARTIAL</span></td><td>
+<p class="finding">Four <code>is_flush</code> tests and one <code>reset_delta_seconds</code> test. The core property (free flush vs scheduled reset vs wobble vs boundary) is well-proven. Missing edge cases:</p>
+<ul>
+  <li>Both values at 0% (flat line, no delta — should not fire)</li>
+  <li>Negative delta (util rose — should not fire even though prev - cur is negative)</li>
+  <li><code>reset_delta_seconds</code> with bad timestamps should return None</li>
+  <li><code>reset_delta_seconds</code> with equal timestamps (delta = 0, anchor_advanced = false)</li>
+</ul>
+<p class="finding">None of these missing tests would fail on the current code, but they would guard against regressions.</p>
+<code>src/macos_app.rs:640-677</code>
+</td></tr>
+
+<!-- F2 -->
+<tr><td>F2 — Build checks</td><td><span class="badge pass">PASS</span></td><td>
+<ul>
+  <li><code>cargo test</code>: 36 passed, 0 failed</li>
+  <li><code>cargo clippy --all-targets --all-features -- -D warnings</code>: clean</li>
+  <li><code>swiftc -parse-as-library -typecheck macos/ClaudeMeterApp.swift</code>: clean</li>
+</ul>
+</td></tr>
+
+<!-- F3 -->
+<tr><td>F3 — Em dashes + paths</td><td><span class="badge partial">PARTIAL</span></td><td>
+<p class="finding">One em dash appears in added code — in the extracted <code>updateButtonAppearance()</code> comment carried over from the old <code>renderMenu()</code>:</p>
+<pre>// Fire means "on track to blow the weekly budget" — but being nearly</pre>
+<p class="finding">Pre-existing, not newly authored, but strict compliance requires a scan-and-replace across the codebase. The scripts use <code>$HOME</code>-prefixed paths (expand to absolute at runtime), which satisfies the "absolute paths only" rule.</p>
+<code>macos/ClaudeMeterApp.swift:259</code>
+</td></tr>
+</table>
+
+<h2>Follow-ups</h2>
+
+<ol class="followups">
+  <li>
+    <strong>Explicitly nil the attributed title when the party ends.</strong>
+    <span class="severity med">MED</span><br>
+    In <code>updateButtonAppearance()</code> (macos/ClaudeMeterApp.swift:258-269), set <code>button.attributedTitle = nil</code> before assigning <code>button.title</code> in the non-celebration branch. This guarantees the NSButton cell discards any cached rainbow-attributed string and regenerates from the plain title. Without it, visual artifacts (lingering rainbow coloring) are possible, though not guaranteed.
+  </li>
+  <li>
+    <strong>Add <code>skip_serializing_if</code> to <code>celebrate</code>.</strong>
+    <span class="severity low">LOW</span><br>
+    Change <code>#[serde(default)]</code> to <code>#[serde(default, skip_serializing_if = &quot;Option::is_none&quot;)]</code> on the <code>celebrate</code> field in <code>MacStatus</code> (src/macos_app.rs:49). Currently the serialized JSON includes <code>"celebrate": null</code> when there's no party. Swift handles it, but cleaner output is one annotation away.
+  </li>
+  <li>
+    <strong>Floor <code>anchor_tolerance_seconds</code> or document the constraint.</strong>
+    <span class="severity low">LOW</span><br>
+    In <code>validate()</code> (src/config.rs:230-231), the current only guards against negative values. A value of <code>0</code> means any non-zero timestamp delta counts as anchor advanced, which could end the party on a 1-second jitter. Either set a minimum of <code>1</code> or add a comment that setting it to 0 disables the hold-anchor detection and will end parties on any timestamp variation.
+  </li>
+  <li>
+    <strong>Add edge-case unit tests.</strong>
+    <span class="severity low">LOW</span><br>
+    Add tests for <code>is_flush</code> with (a) both values at 0%, (b) negative delta (utilization increased), and for <code>reset_delta_seconds</code> with (c) equal timestamps, (d) bad timestamp strings (should return None), and (e) tolerance-boundary cases (delta exactly equals tolerance, delta is tolerance+1). These guard against regressions that the current 5-test suite doesn't cover.
+  </li>
+  <li>
+    <strong>Replace the carried-over em dash with a hyphen.</strong>
+    <span class="severity low">LOW</span><br>
+    The comment in <code>updateButtonAppearance()</code> uses an em dash (U+2014). Replace with a double-hyphen or rephrase to comply with project conventions. Scan the rest of the Swift file for the same pattern.
+  </li>
+</ol>
+
+<h2>Code Quality Notes</h2>
+<p>Overall strong implementation. Highlights:</p>
+<ul>
+  <li>The state machine is well-abstracted — <code>CelebrateState</code> is persisted cleanly with clear load/save boundaries.</li>
+  <li><code>CelebrationCfg</code> vs <code>Celebrate</code> vs <code>CelebrateState</code> separation of concerns is well-designed (tunables vs API-facing struct vs persisted state).</li>
+  <li>Timer guard pattern (<code>guard celebrationTimer == nil else { return }</code>) is exactly right for a timer that's managed from multiple call sites.</li>
+  <li>The feature adds no non-trivial dependencies — <code>chrono::Local</code> was already in scope.</li>
+  <li>The commit splits are logical: 2131548 (helper script) then 7abd589 (core feature).</li>
+</ul>
+
+</body>
+</html>

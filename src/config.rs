@@ -227,7 +227,10 @@ impl Config {
         // Celebration tunables: keep to sane ranges.
         self.celebrate_stop_at_percent = self.celebrate_stop_at_percent.clamp(0.0, 100.0);
         self.celebrate_drop_threshold = self.celebrate_drop_threshold.clamp(1.0, 100.0);
-        if self.celebrate_anchor_tolerance_seconds < 0 {
+        // Below ~1 minute, normal integer-second jitter in resets_at could read
+        // as "anchor advanced" and end a party early. Anything that small is a
+        // misconfiguration; fall back to the default.
+        if self.celebrate_anchor_tolerance_seconds < 60 {
             self.celebrate_anchor_tolerance_seconds = 3600;
         }
 
