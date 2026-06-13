@@ -63,10 +63,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var agent: Process?
     private var timer: Timer?
     private var currentStatus = Status.loading
-    // Drives the fireworks + rainbow animation while a free-flush party is live.
+    // Drives the rainbow text animation while a free-flush party is live. The
+    // icon stays a fixed party popper; only the text color scrolls.
     private var celebrationTimer: Timer?
     private var celebrationFrame: Int = 0
-    private let fireworksFrames = ["🎆", "🎇", "✨", "🎉"]
+    private let partyIcon = "🎉"
 
     private let appSupport: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -242,17 +243,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Set the menu bar button's image/title for the current state. During a
-    /// free-flush party this paints an animated fireworks emoji plus rainbow
-    /// text (the frame advances on the celebration timer). Otherwise it falls
-    /// back to the 🔥 hot-pace indicator or the severity dot, as before.
+    /// free-flush party this paints a fixed party icon plus rainbow text whose
+    /// colors scroll (the phase advances on the celebration timer). Otherwise it
+    /// falls back to the 🔥 hot-pace indicator or the severity dot, as before.
     private func updateButtonAppearance() {
         guard let button = statusItem.button else { return }
         button.toolTip = currentStatus.detail
 
         if currentStatus.celebrateActive {
             button.image = nil
-            let emoji = fireworksFrames[celebrationFrame % fireworksFrames.count]
-            button.attributedTitle = rainbowTitle("\(emoji) " + menuBarTitle(), phase: celebrationFrame)
+            button.attributedTitle = rainbowTitle("\(partyIcon) " + menuBarTitle(), phase: celebrationFrame)
             return
         }
 
