@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: startup flush backfill</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --fg: #e6edf3;
+  --muted: #9da7b3;
+  --accent: #2f81f7;
+  --warn: #f0883e;
+  --ok: #3fb950;
+  --danger: #f85149;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  max-width: 880px;
+  margin: 40px auto;
+  padding: 0 20px;
+  line-height: 1.6;
+}
+h1 { font-size: 1.5em; margin-bottom: 0.25em; }
+h2 { font-size: 1.2em; margin: 2em 0 0.5em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+h3 { font-size: 1em; margin: 1.5em 0 0.25em; color: var(--muted); }
+.verdict {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1.1em;
+}
+.verdict.merge { background: #1a3a2a; color: var(--ok); border: 1px solid var(--ok); }
+.verdict.follows { background: #2a1f1a; color: var(--warn); border: 1px solid var(--warn); }
+.verdict.rework { background: #2a1a1a; color: var(--danger); border: 1px solid var(--danger); }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; font-size: 0.9em; }
+th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+th { background: var(--panel); font-weight: 600; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 3px; font-weight: 600; font-size: 0.85em; }
+.pass { background: #1a3a2a; color: var(--ok); }
+.partial { background: #2a1f1a; color: var(--warn); }
+.fail { background: #2a1a1a; color: var(--danger); }
+code { background: #1a1a2e; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--panel); padding: 12px; border-radius: 6px; overflow-x: auto; border: 1px solid var(--border); }
+.meta { color: var(--muted); font-size: 0.9em; }
+.finding { margin: 0.5em 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--panel); }
+</style>
+</head>
+<body>
+
+<h1>Review: startup flush backfill</h1>
+<p class="meta">
+  Commit <code>a063d12</code> on <code>feat/free-flush-celebration</code><br>
+  Reviewer: Claude Code &middot; 2026-06-12
+</p>
+
+<p class="verdict follows">MERGE WITH FOLLOWS</p>
+
+<p>
+  The commit is well-structured, correct, and cleanly implemented. No bugs found. Two follow-ups
+  to address test coverage gaps before closing the feature branch.
+</p>
+
+<table>
+<tr><th>Check</th><th>Verdict</th><th>Key reference</th></tr>
+
+<tr>
+  <td><strong>A1</strong> &mdash; detect_live_flush correctness: consumed-by-usage, anchor-advanced, drop-landing-high</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:336-378</code></td>
+</tr>
+<tr>
+  <td><strong>A2</strong> &mdash; Consumed scan starts at idx (inclusive); no off-by-one</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:370</code></td>
+</tr>
+<tr>
+  <td><strong>A3</strong> &mdash; Empty/short input, disabled cfg, all-None resets_at: no panic</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:340</code></td>
+</tr>
+<tr>
+  <td><strong>A4</strong> &mdash; Latest-flush-wins: two flushes in window</td>
+  <td><span class="badge partial">PARTIAL</span></td>
+  <td><code>src/macos_app.rs:354-363</code> &middot; correct from reading, but NOT TESTED</td>
+</tr>
+
+<tr>
+  <td><strong>B1</strong> &mdash; backfill called in both --once and daemon paths</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:167</code></td>
+</tr>
+<tr>
+  <td><strong>B2</strong> &mdash; No-op if party already active (no clobber)</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:389</code></td>
+</tr>
+<tr>
+  <td><strong>B3</strong> &mdash; Fail-closed: db/query errors do not panic</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:392-397</code> &middot; let-else returns; .expect is provably safe</td>
+</tr>
+<tr>
+  <td><strong>B4</strong> &mdash; Seeded state maintained (no false re-detect, no premature end)</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:398-408</code> &middot; traced the full poll-after-backfill cycle</td>
+</tr>
+
+<tr>
+  <td><strong>C1</strong> &mdash; SQL correct, parameterized, ASC</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/db.rs:200-206</code></td>
+</tr>
+<tr>
+  <td><strong>C2</strong> &mdash; dead-code attribute correct for cross-platform</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/db.rs:193</code> &middot; #[cfg_attr(windows, allow(dead_code))]</td>
+</tr>
+
+<tr>
+  <td><strong>D1</strong> &mdash; Framework consistency: same helpers, same anchor direction, no divergence</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:344-350</code> vs <code>src/macos_app.rs:270-275</code> &middot; identical logic</td>
+</tr>
+<tr>
+  <td><strong>D2</strong> &mdash; No re-party from consumed or dismissed flushes</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td><code>src/macos_app.rs:370-377</code> &middot; consumed scan catches both end conditions</td>
+</tr>
+
+<tr>
+  <td><strong>E1</strong> &mdash; Tests meaningful; gaps identified</td>
+  <td><span class="badge partial">PARTIAL</span></td>
+  <td>6 tests exist; see Findings 1 &amp; 2 below</td>
+</tr>
+<tr>
+  <td><strong>E2</strong> &mdash; cargo test green, clippy clean</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td>45 passed, <code>-D warnings</code> clean</td>
+</tr>
+
+<tr>
+  <td><strong>F1</strong> &mdash; Conventions: no em dashes, no hardcoded magic</td>
+  <td><span class="badge pass">PASS</span></td>
+  <td>Clean diff; <code>8</code>-day window is reasonable, not a tunable</td>
+</tr>
+</table>
+
+<h2>Detailed findings</h2>
+
+<h3>A. detect_live_flush correctness</h3>
+
+<p><strong>Consumed-by-usage</strong> (<code>src/macos_app.rs:371</code>): The scan from the flush index
+inclusive correctly catches any reading where <code>util &gt;= stop_at_percent</code>. The flush reading
+itself is checked, handling the drop-landing-high case (90% &rarr; 70%). Tested.</p>
+
+<p><strong>Anchor-advanced</strong> (<code>src/macos_app.rs:374</code>): The consumed scan compares each
+later reading&rsquo;s <code>resets_at</code> against the flush reading&rsquo;s. When the anchor
+jumps forward by more than <code>anchor_tolerance_seconds</code>, the party is ended. The function
+<code>reset_delta_seconds(a, b) = a - b</code>; the flush_reset is b and each later reset is a, so
+a positive delta past the tolerance means the anchor advanced. This direction is consistent with
+<code>update_celebration</code> at line 271. Tested.</p>
+
+<p><strong>Off-by-one on slice bound</strong> (<code>src/macos_app.rs:370</code>): The slice <code>readings[idx..]</code>
+starts at the flush reading itself. This is correct: the flush reading&rsquo;s util IS checked against
+stop_at_percent (catches drop-landing-high), and the flush_reset vs itself comparison yields delta 0
+(within tolerance). No off-by-one.</p>
+
+<p><strong>Latest-flush-wins</strong> (<code>src/macos_app.rs:354-363</code>): Each flush match
+overwrites <code>flush_idx</code>, so the later flush always wins. The consumed scan then only
+looks from that later flush onward, ignoring an earlier consumed one. Logic is sound, but
+<strong>untested</strong> (see Follow-up 1).</p>
+
+<h3>B. backfill_celebration wiring</h3>
+
+<p><strong>Not clobbering in-flight parties</strong> (<code>src/macos_app.rs:389</code>): The early return
+when <code>load_celebrate_state(exe_dir).active</code> is true correctly prevents the backfill from
+overwriting the <code>since</code> timestamp of an ongoing party.</p>
+
+<p><strong>.expect safety</strong> (<code>src/macos_app.rs:399-401</code>): <code>detect_live_flush</code>
+only returns <code>Some(idx)</code> when <code>readings.len() &gt;= 2</code> (guard at line 340). The
+invariant is proven: the Vec is immutable within the <code>if let</code> block, so <code>readings.last()</code>
+is necessarily <code>Some</code>. No panic path.</p>
+
+<p><strong>Seed &rarr; poll interaction</strong>: Traced the full cycle. The backfill seeds
+<code>CelebrateState { last_util, last_reset, active: true, since }</code>. The next
+<code>poll_once</code> call enters <code>update_celebration</code>, loads this state, and checks end
+conditions against the fresh API response. The post-flush utilization is near 0, so no false
+re-detection. A subsequent anchor advance or usage climb properly ends the party. Tested
+indirectly via the unit tests on <code>detect_live_flush</code>, though not end-to-end.</p>
+
+<h3>C. DB query</h3>
+
+<p><strong>Parameterized</strong>: <code>?1</code> is <code>metric</code>,
+<code>?2</code> is <code>"-{days} days"</code>. No injection vector.
+<strong>Window</strong>: <code>datetime(&rsquo;now&rsquo;, ?2)</code> with <code>"-8 days"</code> gives
+readings from the past 8 days. 8 days is a 1-day buffer on the 7-day reset window, which is reasonable
+for a startup backfill. The autovacuum keeps 30 days of history, so nothing is missed even for longer
+downtime within reason.</p>
+
+<p><strong>dead-code attribute</strong>: <code>#[cfg_attr(windows, allow(dead_code))]</code> on
+<code>query_recent_readings</code> allows the unused function warning only on Windows, where
+<code>macos_app.rs</code> does not exist. Correct.</p>
+
+<h3>D. Framework audit</h3>
+
+<p><strong>Consistency with update_celebration</strong>: Both paths decompose into the same helpers:
+<code>is_flush</code> and <code>reset_delta_seconds</code>. The <code>advanced</code> closure in
+<code>detect_live_flush</code> (lines 344-350) is a near-verbatim copy of the anchor-advance check
+in <code>update_celebration</code> (lines 270-275). Both compute <code>reset_delta_seconds(cur, prev)</code>
+and compare against <code>cfg.anchor_tolerance_seconds</code> with strict <code>&gt;</code>. Both
+treat parse failures as "not advanced" (<code>unwrap_or(false)</code>). No divergence identified.</p>
+
+<p><strong>Re-party risk</strong>: There is no user-facing "dismiss party" action in the codebase,
+so the question of ignoring dismissal does not apply. After natural consumption (usage climbed back
+above stop_at_percent, or a scheduled reset advanced the anchor), <code>detect_live_flush</code>
+returns <code>None</code>. The backfill cannot resurrect a consumed party. Verified by the
+<code>_consumed_by_usage</code> and <code>_ended_by_scheduled_reset</code> tests.</p>
+
+<h3>E. Tests</h3>
+
+<p><strong>6 new tests, all meaningful and non-vacuous</strong>:</p>
+<ul>
+  <li><code>test_detect_live_flush_active</code> &mdash; happy path, 2 readings, returns Some(1)</li>
+  <li><code>test_detect_live_flush_consumed_by_usage</code> &mdash; 3 readings, post-flush usage climbs to 8% (above 5% stop)</li>
+  <li><code>test_detect_live_flush_ended_by_scheduled_reset</code> &mdash; 3 readings, anchor jumps from A to B</li>
+  <li><code>test_detect_live_flush_no_flush</code> &mdash; small rise (3% &rarr; 4%), no detection</li>
+  <li><code>test_detect_live_flush_drop_landing_high_is_not_party</code> &mdash; 90% &rarr; 70% is not a party</li>
+  <li><code>test_query_recent_readings_ordered</code> &mdash; DB query oldest-first, filters metric correctly</li>
+</ul>
+
+<p><strong>Not covered</strong> (see Follow-ups):</p>
+<ol>
+  <li>Two flushes in the same window &mdash; the "latest flush wins" branch has no test.</li>
+  <li>Exactly-at-stop_at_percent boundary (5.0% util) &mdash; code uses <code>&gt;=</code>, no test validates.</li>
+</ol>
+
+<h3>F. Conventions</h3>
+<p>No em dashes. No magic numbers that warrant a config tunable (the 8-day window is a reasonable
+default). snake_case naming throughout. i18n wrapper not needed here (log lines only).</p>
+
+<h2>Follow-ups</h2>
+
+<div class="finding">
+  <strong>1. Add test: two flushes in the same window</strong><br>
+  <code>src/macos_app.rs:354-363</code><br>
+  The loop always overwrites <code>flush_idx</code> on each match, so a later flush supersedes an
+  earlier one. This is correct from reading the code but has no test. Add a test with readings
+  like <code>[54%, 0% (A), 3% (A), 0% (A)]</code> &mdash; two flushes at idx 1 and 3, should
+  return <code>Some(3)</code>. Also test the case where the earlier flush was consumed and the
+  later one is clean: <code>[54% (A), 0% (A), 8% (A), 0% (A)]</code> &rarr; should return
+  <code>Some(3)</code>, not <code>None</code>.
+</div>
+
+<div class="finding">
+  <strong>2. Add test: exactly-at-stop_at_percent boundary</strong><br>
+  <code>src/macos_app.rs:371</code><br>
+  The consumed scan uses <code>&gt;=</code>. Add a test where post-flush utilization is exactly
+  5.0 with <code>stop_at_percent = 5.0</code>, verifying the party does not start. Also confirm
+  that <code>4.999</code> does start the party (it slips under the threshold by epsilon). This
+  documents the boundary behavior.
+</div>
+
+<p>Neither issue is a correctness bug; both are test-coverage gaps. Resolve before the feature
+branch merges to <code>main</code>.</p>
+
+<h2>Metadata</h2>
+<table>
+  <tr><td>Commit</td><td><code>a063d126ab01ae40fa2cccae4b3cb58f827bd82a</code></td></tr>
+  <tr><td>Files changed</td><td>2 (205 insertions, 0 deletions)</td></tr>
+  <tr><td>Pre-existing tests</td><td>39 (all pass)</td></tr>
+  <tr><td>New tests</td><td>6 (all pass)</td></tr>
+  <tr><td>Total tests</td><td>45 passed</td></tr>
+  <tr><td>clippy -D warnings</td><td>Clean</td></tr>
+  <tr><td>Scope</td><td>src/db.rs (query_recent_readings), src/macos_app.rs (detect_live_flush, backfill_celebration)</td></tr>
+</table>
+
+</body>
+</html>

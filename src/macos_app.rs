@@ -804,6 +804,42 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_live_flush_latest_flush_wins() {
+        // Two real flushes (both drops exceed the 15pt threshold): 54->0, then
+        // usage climbed to 20% (which consumed the first party), then 20->0.
+        // The later flush at idx 3 wins; the consumed scan runs only from there,
+        // so the intermediate 20% does NOT end this party. Note the reviewer's
+        // suggested values (3->0, 8->0) are below threshold and would not be
+        // flushes at all; these use real drops.
+        let rows = vec![
+            reading("t0", 54.0, A),
+            reading("t1", 0.0, A),
+            reading("t2", 20.0, A),
+            reading("t3", 0.0, A),
+        ];
+        assert_eq!(detect_live_flush(&rows, cfg()), Some(3));
+    }
+
+    #[test]
+    fn test_detect_live_flush_stop_threshold_boundary() {
+        // Post-flush util exactly at the stop threshold (5.0, stop=5.0): the
+        // consumed scan uses >=, so the party does NOT start.
+        let at = vec![
+            reading("t0", 54.0, A),
+            reading("t1", 0.0, A),
+            reading("t2", 5.0, A),
+        ];
+        assert_eq!(detect_live_flush(&at, cfg()), None);
+        // A hair under the threshold: party starts.
+        let under = vec![
+            reading("t0", 54.0, A),
+            reading("t1", 0.0, A),
+            reading("t2", 4.999, A),
+        ];
+        assert_eq!(detect_live_flush(&under, cfg()), Some(1));
+    }
+
+    #[test]
     fn test_detect_live_flush_consumed_by_usage() {
         // Flush, then usage climbed back past the stop threshold: party over.
         let rows = vec![
