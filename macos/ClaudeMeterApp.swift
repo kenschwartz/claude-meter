@@ -22,6 +22,9 @@ struct Status {
     let chart: [Int]
     // Past 5-hour session reset points as "hours ago" (0-24), for dashed lines.
     let chartResets: [Double]
+    // Free-flush party: when true, the menu bar runs fireworks + rainbow text.
+    let celebrateActive: Bool
+    let celebrateReason: String?
 
     static let loading = Status(
         state: "refreshing",
@@ -33,7 +36,9 @@ struct Status {
         lastApiUpdate: nil,
         error: nil,
         chart: [],
-        chartResets: []
+        chartResets: [],
+        celebrateActive: false,
+        celebrateReason: nil
     )
 }
 
@@ -58,6 +63,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var agent: Process?
     private var timer: Timer?
     private var currentStatus = Status.loading
+    // Drives the fireworks + rainbow animation while a free-flush party is live.
+    private var celebrationTimer: Timer?
+    private var celebrationFrame: Int = 0
+    private let fireworksFrames = ["🎆", "🎇", "✨", "🎉"]
 
     private let appSupport: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -75,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        celebrationTimer?.invalidate()
         agent?.terminate()
     }
 
@@ -113,7 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func refreshNow() {
-        currentStatus = Status(state: "refreshing", title: "...", detail: "Refreshing...", percent: nil, metrics: [], tierNote: nil, lastApiUpdate: nil, error: nil, chart: currentStatus.chart, chartResets: currentStatus.chartResets)
+        currentStatus = Status(state: "refreshing", title: "...", detail: "Refreshing...", percent: nil, metrics: [], tierNote: nil, lastApiUpdate: nil, error: nil, chart: currentStatus.chart, chartResets: currentStatus.chartResets, celebrateActive: currentStatus.celebrateActive, celebrateReason: currentStatus.celebrateReason)
         renderMenu()
 
         DispatchQueue.global(qos: .utility).async {
@@ -154,6 +164,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        let celebrate = object["celebrate"] as? [String: Any]
+        let celebrateActive = (celebrate?["active"] as? Bool) ?? false
+        let celebrateReason = celebrate?["reason"] as? String
+
         currentStatus = Status(
             state: object["state"] as? String ?? "unknown",
             title: object["title"] as? String ?? "...",
@@ -164,26 +178,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             lastApiUpdate: object["last_api_update"] as? String,
             error: object["error"] as? String,
             chart: (object["chart"] as? [Int]) ?? [],
-            chartResets: (object["chart_resets"] as? [Double]) ?? []
+            chartResets: (object["chart_resets"] as? [Double]) ?? [],
+            celebrateActive: celebrateActive,
+            celebrateReason: celebrateReason
         )
         renderMenu()
     }
 
     private func renderMenu() {
-        // Fire means "on track to blow the weekly budget" — but being nearly
-        // maxed right now (raw red) is more urgent, so that wins.
-        let rawCritical = (currentStatus.percent ?? 0) >= 90
-        if !rawCritical && paceIsHot() {
-            statusItem.button?.image = nil
-            statusItem.button?.title = "🔥 " + menuBarTitle()
-        } else {
-            statusItem.button?.image = dotImage(dotName())
-            statusItem.button?.imagePosition = .imageLeading
-            statusItem.button?.title = menuBarTitle()
-        }
-        statusItem.button?.toolTip = currentStatus.detail
+        updateButtonAppearance()
+        manageCelebrationTimer()
 
         menu = NSMenu()
+        if currentStatus.celebrateActive {
+            menu.addItem(disabled("🎉 \(currentStatus.celebrateReason ?? "Free flush!")  ·  enjoy it"))
+            menu.addItem(NSMenuItem.separator())
+        }
         menu.addItem(disabled("ClaudeMeter — \(currentStatus.detail)"))
         if !currentStatus.metrics.isEmpty {
             menu.addItem(NSMenuItem.separator())
@@ -229,6 +239,71 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(item("Quit", #selector(quit)))
 
         statusItem.menu = menu
+    }
+
+    /// Set the menu bar button's image/title for the current state. During a
+    /// free-flush party this paints an animated fireworks emoji plus rainbow
+    /// text (the frame advances on the celebration timer). Otherwise it falls
+    /// back to the 🔥 hot-pace indicator or the severity dot, as before.
+    private func updateButtonAppearance() {
+        guard let button = statusItem.button else { return }
+        button.toolTip = currentStatus.detail
+
+        if currentStatus.celebrateActive {
+            button.image = nil
+            let emoji = fireworksFrames[celebrationFrame % fireworksFrames.count]
+            button.attributedTitle = rainbowTitle("\(emoji) " + menuBarTitle(), phase: celebrationFrame)
+            return
+        }
+
+        // Fire means "on track to blow the weekly budget" — but being nearly
+        // maxed right now (raw red) is more urgent, so that wins.
+        let rawCritical = (currentStatus.percent ?? 0) >= 90
+        if !rawCritical && paceIsHot() {
+            button.image = nil
+            button.title = "🔥 " + menuBarTitle()
+        } else {
+            button.image = dotImage(dotName())
+            button.imagePosition = .imageLeading
+            button.title = menuBarTitle()
+        }
+    }
+
+    /// Start the ~1s animation tick when a party is live, stop it otherwise.
+    private func manageCelebrationTimer() {
+        if currentStatus.celebrateActive {
+            guard celebrationTimer == nil else { return }
+            celebrationFrame = 0
+            celebrationTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
+                guard let self else { return }
+                self.celebrationFrame &+= 1
+                self.updateButtonAppearance()
+            }
+        } else {
+            celebrationTimer?.invalidate()
+            celebrationTimer = nil
+            celebrationFrame = 0
+        }
+    }
+
+    /// Build an attributed title whose letters cycle hue by position and phase,
+    /// so the color appears to scroll. Emoji glyphs ignore foreground color and
+    /// render their own, which is what we want for the fireworks. UTF-16 ranges
+    /// are tracked per character so multi-unit emoji stay aligned.
+    private func rainbowTitle(_ text: String, phase: Int) -> NSAttributedString {
+        let attr = NSMutableAttributedString(string: text)
+        var offset = 0
+        var index = 0
+        for ch in text {
+            let len = String(ch).utf16.count
+            let hue = CGFloat((index * 14 + phase * 20) % 360) / 360.0
+            let color = NSColor(hue: hue, saturation: 0.85, brightness: 0.95, alpha: 1.0)
+            attr.addAttribute(.foregroundColor, value: color, range: NSRange(location: offset, length: len))
+            offset += len
+            index += 1
+        }
+        attr.addAttribute(.font, value: NSFont.menuBarFont(ofSize: 0), range: NSRange(location: 0, length: attr.length))
+        return attr
     }
 
     /// Menu bar text: 5-hour session usage with time left, then the weekly

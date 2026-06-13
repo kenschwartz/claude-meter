@@ -43,6 +43,41 @@ struct MacStatus {
     /// vertical lines on the chart, matching the Windows popup.
     #[serde(default)]
     chart_resets: Vec<f64>,
+    /// Set while a "free flush" party is live. The Swift menu bar animates
+    /// fireworks + rainbow text until weekly usage climbs back past the stop
+    /// threshold. None the rest of the time.
+    #[serde(default)]
+    celebrate: Option<Celebrate>,
+}
+
+/// Active free-flush celebration, surfaced to the Swift UI via status.json.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Celebrate {
+    active: bool,
+    /// RFC3339 timestamp of when the flush was detected.
+    since: Option<String>,
+    /// Short human label for the dropdown line.
+    reason: String,
+}
+
+/// Tunables pulled from Config, threaded into the poll.
+#[derive(Debug, Clone, Copy)]
+struct CelebrationCfg {
+    enabled: bool,
+    stop_at_percent: f64,
+    drop_threshold: f64,
+    anchor_tolerance_seconds: i64,
+}
+
+/// Persisted across polls in celebrate_state.json so the party survives the
+/// poll where usage sits flat at ~0. Tracks the previous weekly reading to
+/// detect the drop, and whether a party is currently live.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct CelebrateState {
+    last_util: Option<f64>,
+    last_reset: Option<String>,
+    active: bool,
+    since: Option<String>,
 }
 
 impl MacStatus {
@@ -60,6 +95,7 @@ impl MacStatus {
             error: None,
             chart: Vec::new(),
             chart_resets: Vec::new(),
+            celebrate: None,
         }
     }
 
@@ -77,6 +113,7 @@ impl MacStatus {
             error: Some(message),
             chart: Vec::new(),
             chart_resets: Vec::new(),
+            celebrate: None,
         }
     }
 }
@@ -118,9 +155,22 @@ pub fn run() {
 
         let plan_override = config_mgr.config.plan_override.clone();
         let login_warning = config_mgr.config.token_expiry_warning;
+        let celebration = CelebrationCfg {
+            enabled: config_mgr.config.celebrate_free_flush,
+            stop_at_percent: config_mgr.config.celebrate_stop_at_percent,
+            drop_threshold: config_mgr.config.celebrate_drop_threshold,
+            anchor_tolerance_seconds: config_mgr.config.celebrate_anchor_tolerance_seconds,
+        };
 
         if once {
-            poll_once(&exe_dir, &client, login_warning, plan_override.as_deref()).await;
+            poll_once(
+                &exe_dir,
+                &client,
+                login_warning,
+                plan_override.as_deref(),
+                celebration,
+            )
+            .await;
             return;
         }
 
@@ -129,7 +179,14 @@ pub fn run() {
         }
 
         loop {
-            poll_once(&exe_dir, &client, login_warning, plan_override.as_deref()).await;
+            poll_once(
+                &exe_dir,
+                &client,
+                login_warning,
+                plan_override.as_deref(),
+                celebration,
+            )
+            .await;
             let interval = config_mgr.config.polling_interval_seconds.max(60);
             tokio::time::sleep(Duration::from_secs(interval)).await;
         }
@@ -141,6 +198,7 @@ async fn poll_once(
     client: &ClaudeClient,
     login_warning_enabled: bool,
     plan_override: Option<&str>,
+    celebration: CelebrationCfg,
 ) {
     mark_refreshing(exe_dir);
 
@@ -174,7 +232,118 @@ async fn poll_once(
     usage.rate_limit_tier = credential.rate_limit_tier;
 
     save_history(exe_dir, &usage);
-    publish_status(exe_dir, &usage, plan_override);
+    let celebrate = update_celebration(exe_dir, &usage, celebration);
+    publish_status(exe_dir, &usage, plan_override, celebrate);
+}
+
+/// Detect and track a "free flush". Returns Some(active party) when the menu
+/// bar should celebrate. A flush is a weekly-utilization drop of at least
+/// `drop_threshold` points between two polls while the reset anchor holds
+/// (resets_at moved less than the tolerance) - that is Anthropic zeroing the
+/// counter out of band, not a scheduled reset. Once live, the party persists
+/// across polls until utilization climbs back to `stop_at_percent`, or a real
+/// scheduled reset arrives (the anchor jumps forward). State is persisted so a
+/// flat run of ~0% readings does not end it.
+fn update_celebration(
+    exe_dir: &Path,
+    usage: &UsageResponse,
+    cfg: CelebrationCfg,
+) -> Option<Celebrate> {
+    if !cfg.enabled {
+        // Clear any stale state so re-enabling later starts clean.
+        let _ = std::fs::remove_file(exe_dir.join("celebrate_state.json"));
+        return None;
+    }
+
+    let week = usage.seven_day.as_ref();
+    let cur_util = week.map(|m| m.utilization);
+    let cur_reset = week.and_then(|m| m.resets_at.clone());
+
+    let mut st = load_celebrate_state(exe_dir);
+
+    // Did the anchor jump forward (a real scheduled reset)? Compared against the
+    // previous reading. Used both to suppress false flushes and to end a party.
+    let anchor_advanced = match (cur_reset.as_deref(), st.last_reset.as_deref()) {
+        (Some(cur), Some(prev)) => reset_delta_seconds(cur, prev)
+            .map(|d| d > cfg.anchor_tolerance_seconds)
+            .unwrap_or(false),
+        _ => false,
+    };
+
+    // Detect a fresh flush event: a real drop with the anchor held.
+    if let (Some(cu), Some(pu)) = (cur_util, st.last_util) {
+        if is_flush(pu, cu, anchor_advanced, cfg.drop_threshold) {
+            st.active = true;
+            st.since = Some(Local::now().to_rfc3339());
+            append_log(
+                exe_dir,
+                &format!(
+                    "Free flush detected: weekly {:.0}% -> {:.0}%, anchor held. Party on.",
+                    pu, cu
+                ),
+            );
+        }
+    }
+
+    // End conditions for an active party.
+    if st.active {
+        if anchor_advanced {
+            st.active = false;
+            st.since = None;
+        } else if let Some(cu) = cur_util {
+            if cu >= cfg.stop_at_percent {
+                st.active = false;
+                st.since = None;
+                append_log(
+                    exe_dir,
+                    &format!("Free flush party ended: weekly back to {:.0}%.", cu),
+                );
+            }
+        }
+    }
+
+    // Remember this reading for the next comparison.
+    st.last_util = cur_util;
+    st.last_reset = cur_reset;
+    save_celebrate_state(exe_dir, &st);
+
+    if st.active {
+        Some(Celebrate {
+            active: true,
+            since: st.since.clone(),
+            reason: "Free weekly flush - fresh bucket".to_string(),
+        })
+    } else {
+        None
+    }
+}
+
+/// A flush is a weekly-utilization drop of at least `drop_threshold` points
+/// while the reset anchor did not jump forward. A scheduled reset also drops
+/// utilization, but it moves the anchor, so `anchor_advanced` suppresses it.
+fn is_flush(prev_util: f64, cur_util: f64, anchor_advanced: bool, drop_threshold: f64) -> bool {
+    (prev_util - cur_util) >= drop_threshold && !anchor_advanced
+}
+
+/// Signed seconds between two RFC3339 timestamps (a - b). None if either fails
+/// to parse.
+fn reset_delta_seconds(a: &str, b: &str) -> Option<i64> {
+    let a: chrono::DateTime<chrono::Utc> = a.parse().ok()?;
+    let b: chrono::DateTime<chrono::Utc> = b.parse().ok()?;
+    Some(a.signed_duration_since(b).num_seconds())
+}
+
+fn load_celebrate_state(exe_dir: &Path) -> CelebrateState {
+    std::fs::read_to_string(exe_dir.join("celebrate_state.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_celebrate_state(exe_dir: &Path, st: &CelebrateState) {
+    if let Ok(json) = serde_json::to_string_pretty(st) {
+        let _ = std::fs::write(exe_dir.join("celebrate_state.json"), json);
+    }
 }
 
 fn save_history(exe_dir: &Path, usage: &UsageResponse) {
@@ -198,7 +367,12 @@ fn save_history(exe_dir: &Path, usage: &UsageResponse) {
     }
 }
 
-fn publish_status(exe_dir: &Path, usage: &UsageResponse, plan_override: Option<&str>) {
+fn publish_status(
+    exe_dir: &Path,
+    usage: &UsageResponse,
+    plan_override: Option<&str>,
+    celebrate: Option<Celebrate>,
+) {
     let percent = usage.max_utilization().unwrap_or(0.0).round() as u32;
     let plan = plan_override
         .map(|s| s.to_string())
@@ -259,6 +433,7 @@ fn publish_status(exe_dir: &Path, usage: &UsageResponse, plan_override: Option<&
         error: None,
         chart,
         chart_resets,
+        celebrate,
     };
 
     append_log(
@@ -461,5 +636,41 @@ mod tests {
     #[test]
     fn test_escape_applescript() {
         assert_eq!(escape_applescript(r#"a\b"c"#), r#"a\\b\"c"#);
+    }
+
+    #[test]
+    fn test_is_flush_free_flush() {
+        // 54% -> 0% with anchor held: a free flush.
+        assert!(is_flush(54.0, 0.0, false, 15.0));
+    }
+
+    #[test]
+    fn test_is_flush_scheduled_reset_suppressed() {
+        // Same big drop, but the anchor jumped forward: a scheduled reset, not
+        // a free flush. Must not celebrate.
+        assert!(!is_flush(54.0, 0.0, true, 15.0));
+    }
+
+    #[test]
+    fn test_is_flush_small_wobble_ignored() {
+        // Normal poll-to-poll noise under the threshold is not a flush.
+        assert!(!is_flush(54.0, 50.0, false, 15.0));
+    }
+
+    #[test]
+    fn test_is_flush_threshold_boundary() {
+        // Exactly at the threshold counts.
+        assert!(is_flush(20.0, 5.0, false, 15.0));
+    }
+
+    #[test]
+    fn test_reset_delta_seconds_holds_vs_advances() {
+        let a = "2026-06-18T04:00:00+00:00";
+        let b = "2026-06-18T03:59:59+00:00";
+        // Anchor held: ~1s apart.
+        assert_eq!(reset_delta_seconds(a, b), Some(1));
+        // Anchor advanced ~7 days.
+        let later = "2026-06-25T04:00:00+00:00";
+        assert!(reset_delta_seconds(later, a).unwrap() > 600_000);
     }
 }

@@ -96,6 +96,36 @@ pub struct Config {
     /// downgrade comparison. Recognized: "Pro", "Max 5x", "Max 20x".
     #[serde(default)]
     pub plan_override: Option<String>,
+    /// Celebrate a "free flush": when Anthropic zeroes the weekly counter out
+    /// of band (utilization drops hard while the reset anchor holds), the menu
+    /// bar throws a fireworks + rainbow party until you start using the fresh
+    /// bucket again. Tunables below.
+    #[serde(default = "default_true")]
+    pub celebrate_free_flush: bool,
+    /// Stop the party once weekly utilization climbs back to at least this
+    /// percent (you have started denting the fresh bucket).
+    #[serde(default = "default_celebrate_stop_at")]
+    pub celebrate_stop_at_percent: f64,
+    /// Minimum weekly-utilization drop (percentage points) between two polls to
+    /// count as a flush. Filters out normal poll-to-poll wobble.
+    #[serde(default = "default_celebrate_drop")]
+    pub celebrate_drop_threshold: f64,
+    /// Max movement (seconds) of resets_at still treated as "anchor held". A
+    /// scheduled weekly reset moves it by days; a free flush leaves it put.
+    #[serde(default = "default_celebrate_tolerance_seconds")]
+    pub celebrate_anchor_tolerance_seconds: i64,
+}
+
+fn default_celebrate_stop_at() -> f64 {
+    5.0
+}
+
+fn default_celebrate_drop() -> f64 {
+    15.0
+}
+
+fn default_celebrate_tolerance_seconds() -> i64 {
+    3600
 }
 
 fn default_dashboard_layout() -> String {
@@ -136,6 +166,10 @@ impl Default for Config {
             web_api_session_key: None,
             web_api_org_id: None,
             plan_override: None,
+            celebrate_free_flush: true,
+            celebrate_stop_at_percent: 5.0,
+            celebrate_drop_threshold: 15.0,
+            celebrate_anchor_tolerance_seconds: 3600,
         }
     }
 }
@@ -188,6 +222,13 @@ impl Config {
         // Validate dashboard layout
         if !["minimal", "standard", "detailed"].contains(&self.dashboard_layout.as_str()) {
             self.dashboard_layout = "standard".to_string();
+        }
+
+        // Celebration tunables: keep to sane ranges.
+        self.celebrate_stop_at_percent = self.celebrate_stop_at_percent.clamp(0.0, 100.0);
+        self.celebrate_drop_threshold = self.celebrate_drop_threshold.clamp(1.0, 100.0);
+        if self.celebrate_anchor_tolerance_seconds < 0 {
+            self.celebrate_anchor_tolerance_seconds = 3600;
         }
 
         // Validate language
