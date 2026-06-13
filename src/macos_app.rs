@@ -162,6 +162,10 @@ pub fn run() {
             anchor_tolerance_seconds: config_mgr.config.celebrate_anchor_tolerance_seconds,
         };
 
+        // Resume a party that is still live in the history but was never
+        // recorded (app down or pre-feature when the flush happened).
+        backfill_celebration(&exe_dir, celebration);
+
         if once {
             poll_once(
                 &exe_dir,
@@ -315,6 +319,97 @@ fn update_celebration(
         })
     } else {
         None
+    }
+}
+
+/// Scan recent weekly history (oldest-first `(timestamp, utilization,
+/// resets_at)`) for a free flush that should STILL be celebrating now, and
+/// return the index of that flush reading. Used at startup so a flush that
+/// happened while the app was down or being upgraded is not missed (the live
+/// per-poll detector only sees drops between two of its own polls).
+///
+/// A party is live iff: the latest flush event (a drop >= `drop_threshold`
+/// with the anchor held) is followed by NO reading that climbed back to
+/// `stop_at_percent` and NO scheduled reset (anchor jump) since. The flush
+/// reading itself is included in that check, so a drop that merely lands high
+/// (e.g. 90% -> 70%) does not party.
+fn detect_live_flush(
+    readings: &[(String, f64, Option<String>)],
+    cfg: CelebrationCfg,
+) -> Option<usize> {
+    if !cfg.enabled || readings.len() < 2 {
+        return None;
+    }
+
+    let advanced = |cur: &Option<String>, prev: &Option<String>| -> bool {
+        match (cur.as_deref(), prev.as_deref()) {
+            (Some(c), Some(p)) => reset_delta_seconds(c, p)
+                .map(|d| d > cfg.anchor_tolerance_seconds)
+                .unwrap_or(false),
+            _ => false,
+        }
+    };
+
+    // Latest flush event wins (a later flush supersedes an earlier one).
+    let mut flush_idx = None;
+    for i in 1..readings.len() {
+        if is_flush(
+            readings[i - 1].1,
+            readings[i].1,
+            advanced(&readings[i].2, &readings[i - 1].2),
+            cfg.drop_threshold,
+        ) {
+            flush_idx = Some(i);
+        }
+    }
+    let idx = flush_idx?;
+    let flush_reset = readings[idx].2.clone();
+
+    // From the flush onward, the party must not have been consumed: no reading
+    // back at/above the stop threshold, and no scheduled reset since.
+    for (_, util, reset) in &readings[idx..] {
+        if *util >= cfg.stop_at_percent {
+            return None;
+        }
+        if advanced(reset, &flush_reset) {
+            return None;
+        }
+    }
+    Some(idx)
+}
+
+/// At startup, resume a free-flush party that is still live in the history but
+/// was never recorded (app was down or pre-feature when the flush happened).
+/// No-op if a party is already active (the per-poll detector owns it) or if the
+/// db/history is unavailable.
+fn backfill_celebration(exe_dir: &Path, cfg: CelebrationCfg) {
+    if !cfg.enabled {
+        return;
+    }
+    if load_celebrate_state(exe_dir).active {
+        return;
+    }
+    let Ok(db) = Database::open(exe_dir) else {
+        return;
+    };
+    let Ok(readings) = db.query_recent_readings("seven_day", 8) else {
+        return;
+    };
+    if let Some(idx) = detect_live_flush(&readings, cfg) {
+        let last = readings
+            .last()
+            .expect("non-empty: detect_live_flush matched");
+        let state = CelebrateState {
+            last_util: Some(last.1),
+            last_reset: last.2.clone(),
+            active: true,
+            since: Some(readings[idx].0.clone()),
+        };
+        save_celebrate_state(exe_dir, &state);
+        append_log(
+            exe_dir,
+            "Startup backfill: a recent free flush is still live, resuming the party.",
+        );
     }
 }
 
@@ -684,6 +779,64 @@ mod tests {
         // Anchor advanced ~7 days.
         let later = "2026-06-25T04:00:00+00:00";
         assert!(reset_delta_seconds(later, a).unwrap() > 600_000);
+    }
+
+    fn cfg() -> CelebrationCfg {
+        CelebrationCfg {
+            enabled: true,
+            stop_at_percent: 5.0,
+            drop_threshold: 15.0,
+            anchor_tolerance_seconds: 3600,
+        }
+    }
+
+    fn reading(ts: &str, util: f64, reset: &str) -> (String, f64, Option<String>) {
+        (ts.to_string(), util, Some(reset.to_string()))
+    }
+
+    const A: &str = "2026-06-18T04:00:00+00:00";
+    const B: &str = "2026-06-25T04:00:00+00:00"; // ~7 days later (scheduled reset)
+
+    #[test]
+    fn test_detect_live_flush_active() {
+        let rows = vec![reading("t0", 54.0, A), reading("t1", 0.0, A)];
+        assert_eq!(detect_live_flush(&rows, cfg()), Some(1));
+    }
+
+    #[test]
+    fn test_detect_live_flush_consumed_by_usage() {
+        // Flush, then usage climbed back past the stop threshold: party over.
+        let rows = vec![
+            reading("t0", 54.0, A),
+            reading("t1", 0.0, A),
+            reading("t2", 8.0, A),
+        ];
+        assert_eq!(detect_live_flush(&rows, cfg()), None);
+    }
+
+    #[test]
+    fn test_detect_live_flush_ended_by_scheduled_reset() {
+        // Flush, then a scheduled reset advanced the anchor: party over.
+        let rows = vec![
+            reading("t0", 54.0, A),
+            reading("t1", 0.0, A),
+            reading("t2", 0.0, B),
+        ];
+        assert_eq!(detect_live_flush(&rows, cfg()), None);
+    }
+
+    #[test]
+    fn test_detect_live_flush_no_flush() {
+        let rows = vec![reading("t0", 3.0, A), reading("t1", 4.0, A)];
+        assert_eq!(detect_live_flush(&rows, cfg()), None);
+    }
+
+    #[test]
+    fn test_detect_live_flush_drop_landing_high_is_not_party() {
+        // Big drop but still well above the stop threshold (90% -> 70%): you are
+        // clearly using it, no party.
+        let rows = vec![reading("t0", 90.0, A), reading("t1", 70.0, A)];
+        assert_eq!(detect_live_flush(&rows, cfg()), None);
     }
 
     #[test]

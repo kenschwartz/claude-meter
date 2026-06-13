@@ -187,6 +187,36 @@ impl Database {
         Ok(rows.flatten().collect())
     }
 
+    /// Recent readings for one metric, oldest-first: (timestamp, utilization,
+    /// resets_at). Used by the macOS startup backfill to find a free flush that
+    /// happened while the app was down or being upgraded.
+    #[cfg_attr(windows, allow(dead_code))] // consumed by the macOS app
+    pub fn query_recent_readings(
+        &self,
+        metric: &str,
+        days: i64,
+    ) -> SqlResult<Vec<(String, f64, Option<String>)>> {
+        let cutoff = format!("-{days} days");
+        let mut stmt = self.conn.prepare(
+            "SELECT timestamp, utilization, resets_at
+             FROM usage_history
+             WHERE provider = 'claude'
+               AND metric = ?1
+               AND timestamp > datetime('now', ?2)
+             ORDER BY timestamp ASC",
+        )?;
+
+        let rows = stmt.query_map(params![metric, cutoff], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, f64>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })?;
+
+        Ok(rows.flatten().collect())
+    }
+
     /// Compute rate of change (%/hour) for each metric by comparing current values
     /// against values from `lookback_minutes` ago.
     #[cfg_attr(not(windows), allow(dead_code))] // consumed by the Windows app
@@ -401,6 +431,28 @@ mod tests {
             assert!(rate > 0.0, "Expected positive rate, got {rate}");
         }
         // It's OK if no rate is found (timing-sensitive), but if found it should be positive
+    }
+
+    #[test]
+    fn test_query_recent_readings_ordered() {
+        let db = Database::open_in_memory().unwrap();
+        db.insert_at(
+            "2026-06-13 00:00:00",
+            "claude",
+            "seven_day",
+            54.0,
+            Some("a"),
+        )
+        .unwrap();
+        db.insert_at("2026-06-13 00:02:00", "claude", "seven_day", 0.0, Some("a"))
+            .unwrap();
+        // A different metric must not leak in.
+        db.insert("claude", "five_hour", 10.0, Some("b")).unwrap();
+        let rows = db.query_recent_readings("seven_day", 8).unwrap();
+        assert_eq!(rows.len(), 2);
+        // Oldest first.
+        assert_eq!(rows[0].1, 54.0);
+        assert_eq!(rows[1].1, 0.0);
     }
 
     #[test]
