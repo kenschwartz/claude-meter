@@ -1,15 +1,15 @@
 # CLAUDE.md — Project Instructions for AI Assistants
 
 > This file provides context and rules for Claude Code and other AI coding assistants
-> working on the ClaudeMeter project.
+> working on the ZaiMeter project.
 
 ## Project Summary
 
-ClaudeMeter is an ultra-lightweight Windows system tray application written in Rust that monitors
+ZaiMeter is an ultra-lightweight Windows system tray application written in Rust that monitors
 Claude AI subscription usage limits in real-time. It uses under 10 MB RAM, compiles to a single
 portable .exe with zero runtime dependencies, and targets Windows 10/11 (x86_64).
 
-Author: klivak | License: MIT | Repo: github.com/klivak/claudemeter
+Author: klivak | License: MIT | Repo: github.com/klivak/zaimeter
 
 ## Build & Run
 
@@ -24,10 +24,10 @@ cargo build --release
 cargo run
 
 # Run release binary directly
-./target/release/claudemeter.exe
+./target/release/zaimeter.exe
 ```
 
-Output binary: `target/release/claudemeter.exe` (~3 MB)
+Output binary: `target/release/zaimeter.exe` (~3 MB)
 
 ## Lint & Format
 
@@ -130,7 +130,7 @@ git push origin main --tags
 - **Win32 tooltip limit:** `NOTIFYICONDATA.szTip` max 128 chars. Truncate gracefully.
 - **DPI scaling:** Always use `app.manifest` with PerMonitorV2. Test on 150%/200% scaling.
 - **Credential Manager encoding:** `CredReadW` blob may be UTF-16 or UTF-8. Handle both.
-- **Single instance:** Named mutex `"ClaudeMeter-SingleInstance"` prevents duplicate processes.
+- **Single instance:** Named mutex `"ZaiMeter-SingleInstance"` prevents duplicate processes.
 - **Config path:** Use `std::env::current_exe()` parent dir, NOT working directory.
 - **PCWSTR vs PWSTR:** Use PCWSTR for read-only string params in Win32 registry/cred APIs.
 - **windows crate 0.58:** RegQueryValueExW returns WIN32_ERROR, use `.is_ok()` or `.ok()`.

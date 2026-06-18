@@ -29,7 +29,7 @@ struct Status {
     static let loading = Status(
         state: "refreshing",
         title: "...",
-        detail: "Starting ClaudeMeter",
+        detail: "Starting ZaiMeter",
         percent: nil,
         metrics: [],
         tierNote: nil,
@@ -43,7 +43,7 @@ struct Status {
 }
 
 @main
-enum ClaudeMeterMain {
+enum ZaiMeterMain {
     // Strong reference: NSApplication.delegate is weak, so the delegate must be
     // retained for the lifetime of the run loop. main() never returns, so this
     // stack-held reference keeps it alive.
@@ -71,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let appSupport: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        return base.appendingPathComponent("ClaudeMeter", isDirectory: true)
+        return base.appendingPathComponent("ZaiMeter", isDirectory: true)
     }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -112,7 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let pkill = Process()
         pkill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
         // Match the full command line so we only target the polling agent.
-        pkill.arguments = ["-f", "claudemeter-agent --agent"]
+        pkill.arguments = ["-f", "zaimeter-agent --agent"]
         pkill.standardOutput = FileHandle.nullDevice
         pkill.standardError = FileHandle.nullDevice
         do {
@@ -195,7 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menu.addItem(disabled("🎉 \(currentStatus.celebrateReason ?? "Free flush!")  ·  enjoy it"))
             menu.addItem(NSMenuItem.separator())
         }
-        menu.addItem(disabled("ClaudeMeter: \(currentStatus.detail)"))
+        menu.addItem(disabled("ZaiMeter: \(currentStatus.detail)"))
         if !currentStatus.metrics.isEmpty {
             menu.addItem(NSMenuItem.separator())
             for metric in currentStatus.metrics {
@@ -449,23 +449,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openClaude() {
-        NSWorkspace.shared.open(URL(string: "https://z.ai")!)
+        NSWorkspace.shared.open(URL(string: "https://z.ai/manage-apikey/coding-plan/personal/usage")!)
     }
 
     @objc private func checkForUpdates() {
-        let url = URL(string: "https://api.github.com/repos/klivak/claude-meter/releases/latest")!
+        let url = URL(string: "https://api.github.com/repos/klivak/zaimeter/releases/latest")!
         URLSession.shared.dataTask(with: url) { data, _, _ in
             guard let data,
                   let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let tag = object["tag_name"] as? String,
                   let html = object["html_url"] as? String else {
-                self.notify("ClaudeMeter", "Could not check for updates.")
+                self.notify("ZaiMeter", "Could not check for updates.")
                 return
             }
             if tag == "v4.0.1" {
-                self.notify("ClaudeMeter", "You are running the latest version.")
+                self.notify("ZaiMeter", "You are running the latest version.")
             } else {
-                self.notify("ClaudeMeter Update", "\(tag) is available.")
+                self.notify("ZaiMeter Update", "\(tag) is available.")
                 if let url = URL(string: html) {
                     NSWorkspace.shared.open(url)
                 }
@@ -479,7 +479,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func exportConfig() {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "claudemeter-config.json"
+        panel.nameFieldStringValue = "zaimeter-config.json"
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             let source = self.appSupport.appendingPathComponent("config.json")
@@ -487,7 +487,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 try FileManager.default.copyItem(at: source, to: url)
             } catch {
-                self.notify("ClaudeMeter", "Config export failed.")
+                self.notify("ZaiMeter", "Config export failed.")
             }
         }
     }
@@ -502,12 +502,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 try? FileManager.default.removeItem(at: dest)
                 try FileManager.default.copyItem(at: url, to: dest)
-                self.notify("ClaudeMeter", "Config imported. Restarting agent.")
+                self.notify("ZaiMeter", "Config imported. Restarting agent.")
                 self.agent?.terminate()
                 self.agent = nil
                 self.startAgent()
             } catch {
-                self.notify("ClaudeMeter", "Config import failed.")
+                self.notify("ZaiMeter", "Config import failed.")
             }
         }
     }
@@ -522,7 +522,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openLogs() {
-        openFile(appSupport.appendingPathComponent("claudemeter.log"))
+        openFile(appSupport.appendingPathComponent("zaimeter.log"))
     }
 
     @objc private func quit() {
@@ -530,7 +530,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func agentURL() -> URL {
-        Bundle.main.resourceURL!.appendingPathComponent("claudemeter-agent")
+        Bundle.main.resourceURL!.appendingPathComponent("zaimeter-agent")
     }
 
     private func openFile(_ url: URL) {
@@ -542,7 +542,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func launchAgentPath() -> URL {
         FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents/com.klivak.claudemeter.plist")
+            .appendingPathComponent("Library/LaunchAgents/com.klivak.zaimeter.plist")
     }
 
     private func autostartInstalled() -> Bool {
@@ -556,7 +556,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // tight loop. KeepAlive=false lets the app start at login yet still be
         // quit from its menu. See commit 4769be3.
         let binPath = Bundle.main.executablePath ?? Bundle.main.bundleURL
-            .appendingPathComponent("Contents/MacOS/ClaudeMeter").path
+            .appendingPathComponent("Contents/MacOS/ZaiMeter").path
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let plist = """
         <?xml version="1.0" encoding="UTF-8"?>
@@ -564,7 +564,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         <plist version="1.0">
         <dict>
           <key>Label</key>
-          <string>com.klivak.claudemeter</string>
+          <string>com.klivak.zaimeter</string>
           <key>ProgramArguments</key>
           <array>
             <string>\(binPath)</string>
@@ -574,9 +574,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
           <key>KeepAlive</key>
           <false/>
           <key>StandardOutPath</key>
-          <string>\(home)/Library/Logs/claudemeter.out.log</string>
+          <string>\(home)/Library/Logs/zaimeter.out.log</string>
           <key>StandardErrorPath</key>
-          <string>\(home)/Library/Logs/claudemeter.err.log</string>
+          <string>\(home)/Library/Logs/zaimeter.err.log</string>
         </dict>
         </plist>
         """
@@ -619,7 +619,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func writeLog(_ message: String) {
-        let path = appSupport.appendingPathComponent("claudemeter.log")
+        let path = appSupport.appendingPathComponent("zaimeter.log")
         let line = "\(Date()) \(message)\n"
         if let data = line.data(using: .utf8) {
             if FileManager.default.fileExists(atPath: path.path),

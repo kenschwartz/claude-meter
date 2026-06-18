@@ -20,7 +20,7 @@ pub struct UsageRecord {
 
 impl Database {
     pub fn open(exe_dir: &Path) -> SqlResult<Self> {
-        let db_path = exe_dir.join("claudemeter.db");
+        let db_path = exe_dir.join("zaimeter.db");
         let conn = Connection::open(db_path)?;
         let db = Self { conn };
         db.init()?;
@@ -464,7 +464,7 @@ mod tests {
         db.insert("claude", "five_hour", 42.0, None).unwrap();
         db.insert("claude", "seven_day", 15.0, None).unwrap();
 
-        let tmp = std::env::temp_dir().join("claudemeter_test_export.csv");
+        let tmp = std::env::temp_dir().join("zaimeter_test_export.csv");
         let count = db.export_csv(&tmp).unwrap();
         assert_eq!(count, 2);
 

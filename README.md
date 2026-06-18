@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ ClaudeMeter
+# ⚡ ZaiMeter
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/klivak)
 
@@ -11,20 +11,20 @@ See your 5-hour session, weekly limits, Sonnet & Opus quotas — without opening
 
 **🦀 Purposefully built in Rust — uses under 10 MB RAM. Less than Notepad.**
 
-[![Build](https://github.com/klivak/claudemeter/actions/workflows/build.yml/badge.svg)](https://github.com/klivak/claudemeter/actions/workflows/build.yml)
-[![Audit](https://github.com/klivak/claudemeter/actions/workflows/audit.yml/badge.svg)](https://github.com/klivak/claudemeter/actions/workflows/audit.yml)
-[![Release](https://img.shields.io/github/v/release/klivak/claudemeter)](https://github.com/klivak/claudemeter/releases/latest)
+[![Build](https://github.com/klivak/zaimeter/actions/workflows/build.yml/badge.svg)](https://github.com/klivak/zaimeter/actions/workflows/build.yml)
+[![Audit](https://github.com/klivak/zaimeter/actions/workflows/audit.yml/badge.svg)](https://github.com/klivak/zaimeter/actions/workflows/audit.yml)
+[![Release](https://img.shields.io/github/v/release/klivak/zaimeter)](https://github.com/klivak/zaimeter/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows)](https://github.com/klivak/claudemeter/releases)
-[![macOS](https://img.shields.io/badge/platform-macOS%2012%2B-000000?logo=apple)](https://github.com/klivak/claudemeter/releases)
+[![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6?logo=windows)](https://github.com/klivak/zaimeter/releases)
+[![macOS](https://img.shields.io/badge/platform-macOS%2012%2B-000000?logo=apple)](https://github.com/klivak/zaimeter/releases)
 [![RAM](https://img.shields.io/badge/RAM-under%2010MB-brightgreen)](#-why-rust)
-[![VirusTotal](https://img.shields.io/badge/VirusTotal-scanned-4CAF50?logo=virustotal&logoColor=white)](https://github.com/klivak/claudemeter/releases/latest)
+[![VirusTotal](https://img.shields.io/badge/VirusTotal-scanned-4CAF50?logo=virustotal&logoColor=white)](https://github.com/klivak/zaimeter/releases/latest)
 
 [Download](#-quick-start) · [Features](#-features) · [Usage](#-how-to-use) · [FAQ](#-faq)
 
 <br>
 
-<img src="screenshots/main.png" alt="ClaudeMeter dashboard showing Claude AI usage bars and reset timers" width="360"> <img src="screenshots/main2.png" alt="ClaudeMeter light theme with usage history chart" width="360">
+<img src="screenshots/main.png" alt="ZaiMeter dashboard showing Claude AI usage bars and reset timers" width="360"> <img src="screenshots/main2.png" alt="ZaiMeter light theme with usage history chart" width="360">
 
 </div>
 
@@ -33,23 +33,23 @@ See your 5-hour session, weekly limits, Sonnet & Opus quotas — without opening
 
 ---
 
-## 🤔 Why ClaudeMeter?
+## 🤔 Why ZaiMeter?
 
-Tired of hitting Claude AI rate limits mid-conversation? ClaudeMeter sits quietly in your Windows system tray or macOS menu bar and shows you **exactly** how much of your Anthropic subscription quota remains — 5-hour session utilization, weekly usage caps, Sonnet and Opus limits — all without opening a browser tab or checking the Claude dashboard manually.
+Tired of hitting Claude AI rate limits mid-conversation? ZaiMeter sits quietly in your Windows system tray or macOS menu bar and shows you **exactly** how much of your Anthropic subscription quota remains — 5-hour session utilization, weekly usage caps, Sonnet and Opus limits — all without opening a browser tab or checking the Claude dashboard manually.
 
 ## 🦀 Why Rust?
 
-ClaudeMeter is **purposefully built in Rust** to be as lightweight as physically possible. While most similar tools use Electron (which bundles an entire Chromium browser) or Python (which needs a runtime), ClaudeMeter compiles to native Windows and macOS binaries with no bundled browser runtime.
+ZaiMeter is **purposefully built in Rust** to be as lightweight as physically possible. While most similar tools use Electron (which bundles an entire Chromium browser) or Python (which needs a runtime), ZaiMeter compiles to native Windows and macOS binaries with no bundled browser runtime.
 
 | App | RAM Usage | Binary Size | Dependencies |
 |-----|-----------|-------------|-------------|
-| **ClaudeMeter (Rust)** | **~2 MB** | **~3 MB** | **None** |
+| **ZaiMeter (Rust)** | **~2 MB** | **~3 MB** | **None** |
 | Windows Notepad | ~10 MB | built-in | — |
 | Electron-based tray apps | 80–150 MB | ~80 MB | Chromium |
 | Python-based monitors | 25–45 MB | ~15 MB | Python runtime |
 | .NET-based monitors | 15–25 MB | ~1 MB | .NET runtime |
 
-<img src="screenshots/task-manager.png" alt="Windows Task Manager showing ClaudeMeter using only 1.9 MB RAM" width="540">
+<img src="screenshots/task-manager.png" alt="Windows Task Manager showing ZaiMeter using only 1.9 MB RAM" width="540">
 
 **Single portable `.exe` on Windows** and a native **`.app` bundle on macOS** — no Electron, no .NET, no Java, no Python, no Node.js. Download → run → done.
 
@@ -57,41 +57,41 @@ ClaudeMeter is **purposefully built in Rust** to be as lightweight as physically
 
 ### Step 1: Install Claude Code (one-time)
 
-ClaudeMeter reads your Claude credentials automatically. You need [Claude Code](https://claude.ai/download) installed and logged in:
+ZaiMeter reads your Claude credentials automatically. You need [Claude Code](https://claude.ai/download) installed and logged in:
 
 ```bash
 # Install Claude Code (if not already)
 # Download from https://claude.ai/download
 
-# Log in (creates OAuth token that ClaudeMeter will use)
+# Log in (creates OAuth token that ZaiMeter will use)
 claude
 ```
 
-### Step 2: Download & Run ClaudeMeter
+### Step 2: Download & Run ZaiMeter
 
 #### Windows
 
-1. **Download** [`claudemeter.exe`](https://github.com/klivak/claudemeter/releases/latest) from Releases
+1. **Download** [`zaimeter.exe`](https://github.com/klivak/zaimeter/releases/latest) from Releases
 2. **Place** it anywhere — Desktop, tools folder, USB drive (it's portable)
 3. **Double-click** to run
 4. **Look** for the colored circle icon in your system tray (bottom-right near the clock)
 
-That's it! No configuration needed. ClaudeMeter auto-detects your plan and starts monitoring.
+That's it! No configuration needed. ZaiMeter auto-detects your plan and starts monitoring.
 
 #### macOS
 
-1. **Download** [`ClaudeMeter-macos-arm64.app.zip`](https://github.com/klivak/claudemeter/releases/latest) from Releases
-2. **Unzip** it and move `ClaudeMeter.app` to `/Applications`
+1. **Download** [`ZaiMeter-macos-arm64.app.zip`](https://github.com/klivak/zaimeter/releases/latest) from Releases
+2. **Unzip** it and move `ZaiMeter.app` to `/Applications`
 3. **Open** the app; it appears as a native menu bar item
 4. Use the menu for **Refresh Now**, **Open Claude Usage**, **Settings/config**, **Import/Export Config**, **Autostart**, and **Open Logs**
 
-The raw `claudemeter-macos-arm64` binary is also published for CLI/agent use, but the `.app.zip` is the recommended macOS download.
+The raw `zaimeter-macos-arm64` binary is also published for CLI/agent use, but the `.app.zip` is the recommended macOS download.
 
 ### Step 3 (Optional): Enable Auto-Start
 
 Right-click the tray icon → check ✅ **"Start with Windows"**
 
-On macOS, use the menu bar item → **Enable Autostart**. The app uses a LaunchAgent and starts `ClaudeMeter.app` from `/Applications` when available.
+On macOS, use the menu bar item → **Enable Autostart**. The app uses a LaunchAgent and starts `ZaiMeter.app` from `/Applications` when available.
 
 ## ✨ Features
 
@@ -108,7 +108,7 @@ On macOS, use the menu bar item → **Enable Autostart**. The app uses a LaunchA
 
 ### ChatGPT / Codex (Optional)
 
-OpenAI does not provide a public API for checking ChatGPT Plus/Pro subscription usage. ClaudeMeter includes an optional panel (disabled by default) with a direct link to your ChatGPT usage page. Enable it in Settings if you want quick access.
+OpenAI does not provide a public API for checking ChatGPT Plus/Pro subscription usage. ZaiMeter includes an optional panel (disabled by default) with a direct link to your ChatGPT usage page. Enable it in Settings if you want quick access.
 
 ### System Tray
 
@@ -120,7 +120,7 @@ OpenAI does not provide a public API for checking ChatGPT Plus/Pro subscription 
 - **📊 Dashboard** — left-click to open the detailed popup
 - **⚠ Blink on critical** — tray icon blinks when usage exceeds 90%
 
-<img src="screenshots/hover.png" alt="ClaudeMeter system tray tooltip showing Claude usage percentages and reset times" width="280">
+<img src="screenshots/hover.png" alt="ZaiMeter system tray tooltip showing Claude usage percentages and reset times" width="280">
 
 ### macOS Menu Bar
 
@@ -128,8 +128,8 @@ OpenAI does not provide a public API for checking ChatGPT Plus/Pro subscription 
 - **Freshness state** — displays whether data is live, refreshing, cached, stale, or blocked by an API error
 - **Manual refresh** — `Refresh Now` forces a new poll instead of relying on cached data
 - **Quick actions** — open Claude usage, check for updates, open config, import/export config, toggle autostart, and open logs
-- **Portable logs** — writes `claudemeter.log` under `~/Library/Application Support/ClaudeMeter`
-- **Agent status file** — writes `status.json` for the menu bar UI under `~/Library/Application Support/ClaudeMeter`
+- **Portable logs** — writes `zaimeter.log` under `~/Library/Application Support/ZaiMeter`
+- **Agent status file** — writes `status.json` for the menu bar UI under `~/Library/Application Support/ZaiMeter`
 
 ### 📊 Dashboard
 
@@ -155,7 +155,7 @@ OpenAI does not provide a public API for checking ChatGPT Plus/Pro subscription 
 - **Light** — for bright environments (Catppuccin Latte palette)
 - **Auto** (default) — follows your Windows system theme automatically
 
-<img src="screenshots/settings.png" alt="ClaudeMeter settings — theme, language, notifications, icon style" width="360">
+<img src="screenshots/settings.png" alt="ZaiMeter settings — theme, language, notifications, icon style" width="360">
 
 ### 🌐 Languages (35)
 
@@ -220,10 +220,10 @@ OpenAI does not provide a public API for checking ChatGPT Plus/Pro subscription 
 - **Aggregated alerts** — when multiple thresholds are crossed simultaneously, a single batched notification is shown instead of separate alerts
 - **Informative alerts** — shows metric name, current %, exceeded threshold, and reset countdown
 - **Sound alerts** — system notification sound (configurable on/off)
-- **Startup notification** — confirmation that ClaudeMeter is running in the tray
+- **Startup notification** — confirmation that ZaiMeter is running in the tray
 - **Deduplication** — won't spam; resets when usage drops below threshold
 
-<img src="screenshots/notification.png" alt="ClaudeMeter Windows toast notification warning about Claude usage threshold" width="360">
+<img src="screenshots/notification.png" alt="ZaiMeter Windows toast notification warning about Claude usage threshold" width="360">
 
 ### 📤 Data Export
 
@@ -249,8 +249,8 @@ OpenAI does not provide a public API for checking ChatGPT Plus/Pro subscription 
 
 | Platform | Default location |
 |----------|------------------|
-| Windows | Next to `claudemeter.exe` |
-| macOS | `~/Library/Application Support/ClaudeMeter/config.json` |
+| Windows | Next to `zaimeter.exe` |
+| macOS | `~/Library/Application Support/ZaiMeter/config.json` |
 
 ```json
 {
@@ -319,10 +319,10 @@ OpenAI does not provide a public API for checking ChatGPT Plus/Pro subscription 
 ### Windows
 
 ```bash
-git clone https://github.com/klivak/claudemeter.git
-cd claudemeter
+git clone https://github.com/klivak/zaimeter.git
+cd zaimeter
 cargo build --release
-# Output: target/release/claudemeter.exe (~3 MB)
+# Output: target/release/zaimeter.exe (~3 MB)
 ```
 
 **Requirements:** Rust 1.75+ and Windows SDK (included with [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)).
@@ -330,20 +330,20 @@ cargo build --release
 ### macOS
 
 ```bash
-git clone https://github.com/klivak/claudemeter.git
-cd claudemeter
+git clone https://github.com/klivak/zaimeter.git
+cd zaimeter
 sh scripts/build-macos-app.sh
 # Output:
-# target/aarch64-apple-darwin/release/ClaudeMeter.app
-# target/aarch64-apple-darwin/release/ClaudeMeter-macos-arm64.app.zip
-# target/aarch64-apple-darwin/release/claudemeter-macos-arm64
+# target/aarch64-apple-darwin/release/ZaiMeter.app
+# target/aarch64-apple-darwin/release/ZaiMeter-macos-arm64.app.zip
+# target/aarch64-apple-darwin/release/zaimeter-macos-arm64
 ```
 
 **Requirements:** Rust stable, Xcode Command Line Tools, Swift compiler, and macOS 12+.
 
 ## 🔑 How Authentication Works
 
-ClaudeMeter does **not** ask for your password or API key. It reuses the OAuth token that [Claude Code](https://claude.ai/download) already stores on your machine.
+ZaiMeter does **not** ask for your password or API key. It reuses the OAuth token that [Claude Code](https://claude.ai/download) already stores on your machine.
 
 **Token lookup order:**
 
@@ -352,7 +352,7 @@ ClaudeMeter does **not** ask for your password or API key. It reuses the OAuth t
 | 1 | `~/.claude/.credentials.json` | Claude Code v2.x+ on Windows and macOS |
 | 2 | Windows Credential Manager (`Claude Code-credentials`) | Claude Code v1.x on Windows (legacy) |
 
-When you run `claude` and log in via the browser, Claude Code saves an OAuth token to `~/.claude/.credentials.json`. ClaudeMeter reads this file to authenticate with the Anthropic Usage API — no extra setup needed.
+When you run `claude` and log in via the browser, Claude Code saves an OAuth token to `~/.claude/.credentials.json`. ZaiMeter reads this file to authenticate with the Anthropic Usage API — no extra setup needed.
 
 **What's stored in the file:**
 
@@ -367,38 +367,38 @@ When you run `claude` and log in via the browser, Claude Code saves an OAuth tok
 }
 ```
 
-ClaudeMeter uses `accessToken` to fetch your usage data and `subscriptionType` to display your plan (Pro/Max). It never modifies this file.
+ZaiMeter uses `accessToken` to fetch your usage data and `subscriptionType` to display your plan (Pro/Max). It never modifies this file.
 
-> **Troubleshooting:** If ClaudeMeter shows "Credentials not found", run `claude` in a terminal and log in. Then click Refresh in ClaudeMeter. On macOS, use **Refresh Now** from the menu bar item and check **Open Logs** if the status remains cached or stale.
+> **Troubleshooting:** If ZaiMeter shows "Credentials not found", run `claude` in a terminal and log in. Then click Refresh in ZaiMeter. On macOS, use **Refresh Now** from the menu bar item and check **Open Logs** if the status remains cached or stale.
 
 ## ❓ FAQ
 
 **Q: Does it work without Claude Code installed?**
-A: ClaudeMeter launches but shows a "Credentials not found" message with a link to claude.ai. You need Claude Code logged in so ClaudeMeter can read the OAuth token from `~/.claude/.credentials.json`.
+A: ZaiMeter launches but shows a "Credentials not found" message with a link to claude.ai. You need Claude Code logged in so ZaiMeter can read the OAuth token from `~/.claude/.credentials.json`.
 
 **Q: How much RAM does it really use?**
 A: Typically **3–8 MB**. Built in Rust with native Win32 API — no Electron, no browser engine.
 
 **Q: Is it safe? Does it send my data anywhere?**
-A: ClaudeMeter is fully open source. It only communicates with `api.anthropic.com` to fetch YOUR usage data using YOUR existing OAuth token. Zero telemetry. Every release binary is automatically scanned by [VirusTotal](https://www.virustotal.com/) (60+ antivirus engines) — check the scan link in each [release](https://github.com/klivak/claudemeter/releases/latest).
+A: ZaiMeter is fully open source. It only communicates with `api.anthropic.com` to fetch YOUR usage data using YOUR existing OAuth token. Zero telemetry. Every release binary is automatically scanned by [VirusTotal](https://www.virustotal.com/) (60+ antivirus engines) — check the scan link in each [release](https://github.com/klivak/zaimeter/releases/latest).
 
 **Q: Why isn't ChatGPT tracking automatic?**
 A: OpenAI deliberately does not expose ChatGPT subscription usage via any public API.
 
 **Q: How do I check my Claude usage limits?**
-A: Just run ClaudeMeter — it reads your Claude Code OAuth token and shows all your limits (5-hour session, weekly cap, Sonnet/Opus quotas) in a system tray popup. No manual checking needed.
+A: Just run ZaiMeter — it reads your Claude Code OAuth token and shows all your limits (5-hour session, weekly cap, Sonnet/Opus quotas) in a system tray popup. No manual checking needed.
 
 **Q: Does it work with Claude Pro, Max 5x, and Max 20x plans?**
-A: Yes. ClaudeMeter auto-detects your plan tier and displays the correct limits for Pro, Max, Max 5x, and Max 20x subscriptions.
+A: Yes. ZaiMeter auto-detects your plan tier and displays the correct limits for Pro, Max, Max 5x, and Max 20x subscriptions.
 
 **Q: What is the Claude 5-hour session limit?**
-A: Claude enforces a rolling 5-hour usage window. ClaudeMeter shows your current utilization percentage and a countdown to when it resets.
+A: Claude enforces a rolling 5-hour usage window. ZaiMeter shows your current utilization percentage and a countdown to when it resets.
 
-**Q: Can I run ClaudeMeter from a USB drive?**
-A: On Windows, yes. It's a single portable `.exe` with zero dependencies. On macOS, use the `.app` bundle for the menu bar UI or the raw `claudemeter-macos-arm64` binary for CLI/agent use.
+**Q: Can I run ZaiMeter from a USB drive?**
+A: On Windows, yes. It's a single portable `.exe` with zero dependencies. On macOS, use the `.app` bundle for the menu bar UI or the raw `zaimeter-macos-arm64` binary for CLI/agent use.
 
 **Q: Does the macOS version have a real menu bar UI?**
-A: Yes. Starting with v4.0.1, ClaudeMeter ships a native AppKit menu bar app with usage %, freshness status, force refresh, Claude link, config import/export, autostart toggle, update check, and log access.
+A: Yes. Starting with v4.0.1, ZaiMeter ships a native AppKit menu bar app with usage %, freshness status, force refresh, Claude link, config import/export, autostart toggle, update check, and log access.
 
 **Q: How do I know if the value is cached?**
 A: On macOS, the menu shows freshness state such as Live, seconds/minutes old, cached/no data, refreshing, or API error. On Windows, use the tray refresh/dashboard behavior and settings to force a refresh.
@@ -420,6 +420,6 @@ A: Yes — 35 languages: English, Ukrainian, Spanish, German, French, Portuguese
 Made by [klivak](https://github.com/klivak)
 
 *Claude is a trademark of Anthropic. ChatGPT is a trademark of OpenAI.*
-*ClaudeMeter is an independent open-source project with no official affiliation.*
+*ZaiMeter is an independent open-source project with no official affiliation.*
 
 </div>

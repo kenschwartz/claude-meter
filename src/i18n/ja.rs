@@ -118,7 +118,7 @@ pub fn strings() -> HashMap<&'static str, &'static str> {
         "Open Claude.ai \u{2192}",
         "Claude.ai\u{3092}\u{958b}\u{304f} \u{2192}",
     );
-    m.insert("ClaudeMeter", "ClaudeMeter");
+    m.insert("ZaiMeter", "ZaiMeter");
     m.insert("CLAUDE", "CLAUDE");
     m.insert("CHATGPT / CODEX", "CHATGPT / CODEX");
     m.insert("Usage History", "使用履歴");

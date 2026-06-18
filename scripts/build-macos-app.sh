@@ -3,7 +3,7 @@ set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET_DIR="$ROOT/target/aarch64-apple-darwin/release"
-APP_DIR="$TARGET_DIR/ClaudeMeter.app"
+APP_DIR="$TARGET_DIR/ZaiMeter.app"
 CONTENTS="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS/MacOS"
 RESOURCES="$CONTENTS/Resources"
@@ -13,8 +13,8 @@ cargo build --release --target aarch64-apple-darwin
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES"
 
-cp "$TARGET_DIR/claudemeter" "$RESOURCES/claudemeter-agent"
-chmod +x "$RESOURCES/claudemeter-agent"
+cp "$TARGET_DIR/zaimeter" "$RESOURCES/zaimeter-agent"
+chmod +x "$RESOURCES/zaimeter-agent"
 
 # Menu bar severity dots: convert the .ico assets to PNGs the Swift app loads
 # from its bundle. Selected at runtime by usage level (green/yellow/red/gray).
@@ -29,8 +29,8 @@ swiftc \
   -framework AppKit \
   -framework Foundation \
   -framework UniformTypeIdentifiers \
-  "$ROOT/macos/ClaudeMeterApp.swift" \
-  -o "$MACOS_DIR/ClaudeMeter"
+  "$ROOT/macos/ZaiMeterApp.swift" \
+  -o "$MACOS_DIR/ZaiMeter"
 
 cat > "$CONTENTS/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -38,13 +38,13 @@ cat > "$CONTENTS/Info.plist" <<EOF
 <plist version="1.0">
 <dict>
   <key>CFBundleExecutable</key>
-  <string>ClaudeMeter</string>
+  <string>ZaiMeter</string>
   <key>CFBundleIdentifier</key>
-  <string>com.klivak.claudemeter</string>
+  <string>com.klivak.zaimeter</string>
   <key>CFBundleName</key>
-  <string>ClaudeMeter</string>
+  <string>ZaiMeter</string>
   <key>CFBundleDisplayName</key>
-  <string>ClaudeMeter</string>
+  <string>ZaiMeter</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
@@ -66,5 +66,5 @@ if command -v codesign >/dev/null 2>&1; then
   codesign --force --deep --sign "$IDENTITY" "$APP_DIR"
 fi
 
-ditto -c -k --keepParent "$APP_DIR" "$TARGET_DIR/ClaudeMeter-macos-arm64.app.zip"
-cp "$TARGET_DIR/claudemeter" "$TARGET_DIR/claudemeter-macos-arm64"
+ditto -c -k --keepParent "$APP_DIR" "$TARGET_DIR/ZaiMeter-macos-arm64.app.zip"
+cp "$TARGET_DIR/zaimeter" "$TARGET_DIR/zaimeter-macos-arm64"

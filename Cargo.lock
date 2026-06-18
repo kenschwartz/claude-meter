@@ -155,23 +155,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "claudemeter"
-version = "4.0.1"
-dependencies = [
- "chrono",
- "env_logger",
- "log",
- "open",
- "reqwest",
- "rusqlite",
- "serde",
- "serde_json",
- "tokio",
- "windows",
- "winres",
-]
-
-[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1780,6 +1763,23 @@ dependencies = [
  "quote",
  "syn",
  "synstructure",
+]
+
+[[package]]
+name = "zaimeter"
+version = "4.0.1"
+dependencies = [
+ "chrono",
+ "env_logger",
+ "log",
+ "open",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tokio",
+ "windows",
+ "winres",
 ]
 
 [[package]]

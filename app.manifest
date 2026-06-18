@@ -3,10 +3,10 @@
   <assemblyIdentity
     version="1.0.0.0"
     processorArchitecture="amd64"
-    name="klivak.ClaudeMeter"
+    name="klivak.ZaiMeter"
     type="win32"
   />
-  <description>ClaudeMeter — Claude AI Usage Monitor</description>
+  <description>ZaiMeter - z.ai GLM usage monitor</description>
   <dependency>
     <dependentAssembly>
       <assemblyIdentity

@@ -1,6 +1,6 @@
 //! Auto-update checker: queries GitHub Releases API for newer versions.
 
-const GITHUB_RELEASES_URL: &str = "https://api.github.com/repos/klivak/claudemeter/releases/latest";
+const GITHUB_RELEASES_URL: &str = "https://api.github.com/repos/klivak/zaimeter/releases/latest";
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -10,7 +10,7 @@ pub async fn check_for_update() -> Option<(String, String)> {
     let client = reqwest::Client::builder()
         .use_rustls_tls()
         .timeout(std::time::Duration::from_secs(10))
-        .user_agent(format!("ClaudeMeter/{}", CURRENT_VERSION))
+        .user_agent(format!("ZaiMeter/{}", CURRENT_VERSION))
         .build()
         .ok()?;
 

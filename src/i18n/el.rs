@@ -130,7 +130,7 @@ pub fn strings() -> HashMap<&'static str, &'static str> {
         "Open Claude.ai \u{2192}",
         "\u{0386}\u{03bd}\u{03bf}\u{03b9}\u{03b3}\u{03bc}\u{03b1} Claude.ai \u{2192}",
     );
-    m.insert("ClaudeMeter", "ClaudeMeter");
+    m.insert("ZaiMeter", "ZaiMeter");
     m.insert("CLAUDE", "CLAUDE");
     m.insert("CHATGPT / CODEX", "CHATGPT / CODEX");
     m.insert(

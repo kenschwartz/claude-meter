@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# detect-flushes.sh - find "free" counter flushes in the ClaudeMeter history db.
+# detect-flushes.sh - find "free" counter flushes in the ZaiMeter history db.
 #
 # Two things can drop your weekly utilization to ~0:
 #   1. Scheduled reset  - your real weekly window fired. resets_at JUMPS FORWARD
@@ -15,7 +15,7 @@
 # Usage:
 #   scripts/detect-flushes.sh [--db PATH] [--drop N] [--tol-seconds S]
 #
-#   --db PATH         path to claudemeter.db (default: auto-detect macOS/Linux)
+#   --db PATH         path to zaimeter.db (default: auto-detect macOS/Linux)
 #   --drop N          min utilization drop (percentage points) to count, default 10
 #   --tol-seconds S   max resets_at movement still treated as "did not advance",
 #                     default 3600 (1h). A scheduled reset moves it by days, so this
@@ -39,15 +39,15 @@ done
 
 if [ -z "$DB" ]; then
   for cand in \
-    "$HOME/Library/Application Support/ClaudeMeter/claudemeter.db" \
-    "$HOME/.local/share/ClaudeMeter/claudemeter.db" \
-    "$HOME/.config/ClaudeMeter/claudemeter.db"; do
+    "$HOME/Library/Application Support/ZaiMeter/zaimeter.db" \
+    "$HOME/.local/share/ZaiMeter/zaimeter.db" \
+    "$HOME/.config/ZaiMeter/zaimeter.db"; do
     if [ -f "$cand" ]; then DB="$cand"; break; fi
   done
 fi
 
 if [ -z "$DB" ] || [ ! -f "$DB" ]; then
-  echo "claudemeter.db not found. Pass one with --db PATH." >&2
+  echo "zaimeter.db not found. Pass one with --db PATH." >&2
   exit 1
 fi
 

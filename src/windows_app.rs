@@ -46,8 +46,8 @@ const IDM_THEME_AUTO: u32 = 5100;
 const IDM_THEME_DARK: u32 = 5101;
 const IDM_THEME_LIGHT: u32 = 5102;
 
-const WINDOW_CLASS: &str = "ClaudeMeterMain";
-const POPUP_CLASS: &str = "ClaudeMeterPopup";
+const WINDOW_CLASS: &str = "ZaiMeterMain";
+const POPUP_CLASS: &str = "ZaiMeterPopup";
 const TIMER_POLL: usize = 1;
 const TIMER_ANIM: usize = 2;
 const TIMER_BLINK: usize = 3;
@@ -171,10 +171,7 @@ pub fn run() {
     // This handles the case where the user moved the exe to a different folder
     // (e.g., after downloading a new release from GitHub).
     if config_mgr.config.autostart {
-        let exe_path = exe_dir
-            .join("claudemeter.exe")
-            .to_string_lossy()
-            .to_string();
+        let exe_path = exe_dir.join("zaimeter.exe").to_string_lossy().to_string();
         if let Err(e) = autostart::set_autostart(true, &exe_path) {
             log::warn!("Failed to sync autostart registry entry: {e}");
         }
@@ -192,9 +189,9 @@ unsafe fn run_message_loop(exe_dir: std::path::PathBuf, config_mgr: ConfigManage
 
     // Create hidden message window
     let main_class_w = wide(WINDOW_CLASS);
-    let main_title_w = wide("ClaudeMeter");
+    let main_title_w = wide("ZaiMeter");
     let popup_class_w = wide(POPUP_CLASS);
-    let popup_title_w = wide("ClaudeMeter Dashboard");
+    let popup_title_w = wide("ZaiMeter Dashboard");
 
     let main_hwnd = CreateWindowExW(
         windows::Win32::UI::WindowsAndMessaging::WINDOW_EX_STYLE(0),
@@ -314,7 +311,7 @@ unsafe fn run_message_loop(exe_dir: std::path::PathBuf, config_mgr: ConfigManage
         {
             if let Some(tray) = &state.tray {
                 tray.show_balloon(
-                    "ClaudeMeter",
+                    "ZaiMeter",
                     state
                         .i18n
                         .t("Running in system tray. Click the icon for details."),
@@ -545,7 +542,7 @@ unsafe extern "system" fn main_wnd_proc(
                             );
                             tray.update(&state.usage, &tooltip, style);
                         } else {
-                            tray.update(&None, "ClaudeMeter", style);
+                            tray.update(&None, "ZaiMeter", style);
                         }
                     }
                 }
@@ -1177,7 +1174,7 @@ unsafe extern "system" fn popup_wnd_proc(
                     state.config_mgr.config.autostart = !state.config_mgr.config.autostart;
                     let exe_path = state
                         .exe_dir
-                        .join("claudemeter.exe")
+                        .join("zaimeter.exe")
                         .to_string_lossy()
                         .to_string();
                     if let Err(e) =
@@ -1758,7 +1755,7 @@ unsafe fn show_context_menu(hwnd: HWND) {
             PCWSTR(autostart_text.as_ptr()),
         );
         append_menu_sep(menu);
-        let about_label = format!("ClaudeMeter v{}", env!("CARGO_PKG_VERSION"));
+        let about_label = format!("ZaiMeter v{}", env!("CARGO_PKG_VERSION"));
         append_menu_str(menu, IDM_ABOUT, &about_label);
         append_menu_str(menu, IDM_EXIT, state.i18n.t("Exit"));
 
@@ -1830,7 +1827,7 @@ unsafe fn handle_menu_command(hwnd: HWND, cmd: u32) {
         }
         IDM_EXPORT_CSV => {
             if let Some(state) = APP_STATE.as_ref() {
-                let csv_path = state.exe_dir.join("claudemeter_history.csv");
+                let csv_path = state.exe_dir.join("zaimeter_history.csv");
                 match Database::open(&state.exe_dir) {
                     Ok(db) => match db.export_csv(&csv_path) {
                         Ok(count) => {
@@ -1872,8 +1869,8 @@ unsafe fn handle_menu_command(hwnd: HWND, cmd: u32) {
             // Show simple about message
             let _ = windows::Win32::UI::WindowsAndMessaging::MessageBoxW(
                 hwnd,
-                windows::core::PCWSTR(wide(&format!("ClaudeMeter v{}\nby klivak\nhttps://github.com/klivak/claudemeter\n\nMIT License", env!("CARGO_PKG_VERSION"))).as_ptr()),
-                windows::core::PCWSTR(wide("About ClaudeMeter").as_ptr()),
+                windows::core::PCWSTR(wide(&format!("ZaiMeter v{}\nby klivak\nhttps://github.com/klivak/zaimeter\n\nMIT License", env!("CARGO_PKG_VERSION"))).as_ptr()),
+                windows::core::PCWSTR(wide("About ZaiMeter").as_ptr()),
                 windows::Win32::UI::WindowsAndMessaging::MB_ICONINFORMATION | windows::Win32::UI::WindowsAndMessaging::MB_OK,
             );
         }
@@ -2091,7 +2088,7 @@ unsafe fn on_poll_result(hwnd: HWND, result: PollResult) {
                 let minutes = ms / 60_000;
                 if let Some(tray) = &state.tray {
                     tray.show_balloon(
-                        "ClaudeMeter",
+                        "ZaiMeter",
                         &format!(
                             "OAuth token expires in ~{} min. Run `claude login` to refresh.",
                             minutes
@@ -2199,9 +2196,9 @@ unsafe fn on_poll_result(hwnd: HWND, result: PollResult) {
                     let is_critical = max_threshold >= 90;
 
                     let title = if is_critical {
-                        format!("ClaudeMeter \u{2014} {}", state.i18n.t("Usage Critical"))
+                        format!("ZaiMeter \u{2014} {}", state.i18n.t("Usage Critical"))
                     } else {
-                        format!("ClaudeMeter \u{2014} {}", state.i18n.t("Usage Alert"))
+                        format!("ZaiMeter \u{2014} {}", state.i18n.t("Usage Alert"))
                     };
 
                     let body = if fired_alerts.len() == 1 {
@@ -2352,7 +2349,7 @@ unsafe fn on_poll_result(hwnd: HWND, result: PollResult) {
 }
 
 fn ensure_single_instance() -> bool {
-    let name = wide("ClaudeMeter-SingleInstance");
+    let name = wide("ZaiMeter-SingleInstance");
     unsafe {
         let mutex = CreateMutexW(None, true, windows::core::PCWSTR(name.as_ptr()));
         match mutex {
@@ -2435,7 +2432,7 @@ fn is_user_idle(timeout_ms: u32) -> bool {
 
 /// Build a text summary of current usage for clipboard.
 fn build_usage_text(usage: &UsageResponse) -> String {
-    let mut lines = vec![format!("ClaudeMeter — Claude ({})", usage.detected_plan())];
+    let mut lines = vec![format!("ZaiMeter — Claude ({})", usage.detected_plan())];
     for (key, metric) in usage.all_metrics() {
         let name = providers::claude::format_metric_name(&key);
         let reset_str = metric

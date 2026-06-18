@@ -190,7 +190,7 @@ pub fn run() {
         }
 
         if config_mgr.config.show_startup_notification {
-            notify("ClaudeMeter", "Running in the macOS menu bar.");
+            notify("ZaiMeter", "Running in the macOS menu bar.");
         }
 
         loop {
@@ -224,7 +224,7 @@ async fn poll_once(
             // A missing credential (vs a transport/API failure) gets the
             // provider-appropriate login hint as a notification.
             if login_warning_enabled && e.starts_with("[cred]") {
-                notify("ClaudeMeter", provider.login_hint());
+                notify("ZaiMeter", provider.login_hint());
             }
             write_error(exe_dir, e);
             return;
@@ -547,7 +547,7 @@ fn publish_status(
     write_status(exe_dir, &status);
 
     if percent >= 90 {
-        notify("ClaudeMeter: high usage", &message);
+        notify("ZaiMeter: high usage", &message);
     }
 }
 
@@ -685,7 +685,7 @@ fn print_status(exe_dir: &Path) {
 }
 
 fn append_log(exe_dir: &Path, message: &str) {
-    let path = exe_dir.join("claudemeter.log");
+    let path = exe_dir.join("zaimeter.log");
     let line = format!("{}\n", message);
     let _ = std::fs::OpenOptions::new()
         .create(true)
@@ -716,7 +716,7 @@ fn app_data_dir() -> PathBuf {
         return PathBuf::from(home)
             .join("Library")
             .join("Application Support")
-            .join("ClaudeMeter");
+            .join("ZaiMeter");
     }
 
     std::env::current_exe()

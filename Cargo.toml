@@ -1,19 +1,19 @@
 [package]
-name = "claudemeter"
+name = "zaimeter"
 version = "4.0.1"
 edition = "2021"
 authors = ["klivak"]
-description = "Ultra-lightweight Windows tray app for monitoring Claude AI subscription usage limits. Built in Rust for minimal memory footprint (under 10 MB RAM)."
+description = "Ultra-lightweight macOS menu-bar app for monitoring z.ai (GLM Coding Plan) usage limits. Built in Rust for minimal memory footprint (under 10 MB RAM)."
 license = "MIT"
-repository = "https://github.com/klivak/claudemeter"
-homepage = "https://github.com/klivak/claudemeter"
+repository = "https://github.com/klivak/zaimeter"
+homepage = "https://github.com/klivak/zaimeter"
 readme = "README.md"
-keywords = ["claude", "anthropic", "usage", "monitor", "tray"]
+keywords = ["zai", "glm", "usage", "monitor", "menubar"]
 categories = ["command-line-utilities"]
 rust-version = "1.75"
 
 [[bin]]
-name = "claudemeter"
+name = "zaimeter"
 path = "src/main.rs"
 
 [dependencies]

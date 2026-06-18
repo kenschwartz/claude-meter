@@ -91,7 +91,7 @@ pub fn strings() -> HashMap<&'static str, &'static str> {
     m.insert("General", "Genel");
     m.insert("Back", "\u{2190} Geri");
     m.insert("Open Claude.ai \u{2192}", "Claude.ai A\u{00e7} \u{2192}");
-    m.insert("ClaudeMeter", "ClaudeMeter");
+    m.insert("ZaiMeter", "ZaiMeter");
     m.insert("CLAUDE", "CLAUDE");
     m.insert("CHATGPT / CODEX", "CHATGPT / CODEX");
     m.insert("Usage History", "Kullanım Geçmişi");

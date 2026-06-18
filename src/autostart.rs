@@ -5,7 +5,7 @@ use windows::Win32::System::Registry::{
 };
 
 const RUN_KEY: &str = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run";
-const APP_NAME: &str = "ClaudeMeter";
+const APP_NAME: &str = "ZaiMeter";
 
 pub fn set_autostart(enabled: bool, exe_path: &str) -> Result<(), String> {
     if enabled {

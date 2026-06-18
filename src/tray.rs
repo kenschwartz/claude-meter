@@ -633,7 +633,7 @@ impl TrayIcon {
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         nid.hIcon = self.icon_gray;
         nid.uCallbackMessage = WM_TRAY_ICON;
-        let tip = "ClaudeMeter";
+        let tip = "ZaiMeter";
         let tip_wide: Vec<u16> = tip.encode_utf16().chain(std::iter::once(0)).collect();
         let copy_len = tip_wide.len().min(127);
         nid.szTip[..copy_len].copy_from_slice(&tip_wide[..copy_len]);
@@ -814,8 +814,8 @@ pub fn build_tooltip_full(
     use crate::providers::claude::format_metric_name;
 
     let header = match (&usage, last_error) {
-        (Some(_), Some(_)) => "ClaudeMeter \u{26a0}".to_string(),
-        _ => "ClaudeMeter".to_string(),
+        (Some(_), Some(_)) => "ZaiMeter \u{26a0}".to_string(),
+        _ => "ZaiMeter".to_string(),
     };
     let mut lines = vec![header];
 
@@ -863,7 +863,7 @@ pub fn build_tooltip(
 
     match usage {
         None => {
-            lines.push("ClaudeMeter".to_string());
+            lines.push("ZaiMeter".to_string());
             if let Some(err) = last_error {
                 lines.push(error_tooltip_label(err).to_string());
             } else {

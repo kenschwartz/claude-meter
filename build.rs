@@ -7,8 +7,8 @@ fn main() {
     res.set_icon_with_id("assets/icon_yellow.ico", "102");
     res.set_icon_with_id("assets/icon_red.ico", "103");
     res.set_icon_with_id("assets/icon_gray.ico", "104");
-    res.set("ProductName", "ClaudeMeter");
-    res.set("FileDescription", "ClaudeMeter");
+    res.set("ProductName", "ZaiMeter");
+    res.set("FileDescription", "ZaiMeter");
     res.set("LegalCopyright", "MIT License - klivak");
     res.set_manifest_file("app.manifest");
     if let Err(e) = res.compile() {

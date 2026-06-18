@@ -15,7 +15,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 use crate::ui::colors::rgb;
 
-pub const WIDGET_CLASS: &str = "ClaudeMeterWidget";
+pub const WIDGET_CLASS: &str = "ZaiMeterWidget";
 const WIDGET_W: i32 = 52;
 const WIDGET_H: i32 = 28;
 
@@ -107,7 +107,7 @@ pub unsafe fn create_widget_window() -> Option<HWND> {
         .encode_utf16()
         .chain(std::iter::once(0))
         .collect();
-    let title: Vec<u16> = "ClaudeMeter Widget"
+    let title: Vec<u16> = "ZaiMeter Widget"
         .encode_utf16()
         .chain(std::iter::once(0))
         .collect();
@@ -293,7 +293,7 @@ unsafe extern "system" fn widget_wnd_proc(
                         &state.last_error,
                     )
                 } else {
-                    "ClaudeMeter".to_string()
+                    "ZaiMeter".to_string()
                 };
 
                 let mut text_wide: Vec<u16> =

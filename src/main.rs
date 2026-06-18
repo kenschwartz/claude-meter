@@ -45,5 +45,5 @@ fn main() {
 
 #[cfg(not(any(windows, target_os = "macos")))]
 fn main() {
-    eprintln!("ClaudeMeter currently supports Windows and macOS.");
+    eprintln!("ZaiMeter currently supports Windows and macOS.");
 }

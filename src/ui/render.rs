@@ -805,8 +805,8 @@ impl PopupRenderer {
             &surface_brush,
         );
 
-        // Title "ClaudeMeter"
-        let title_text = wide(i18n.t("ClaudeMeter"));
+        // Title "ZaiMeter"
+        let title_text = wide(i18n.t("ZaiMeter"));
         let title_format = d2d.get_text_format(14, true, 0, 1).clone();
         let title_brush = rt
             .CreateSolidColorBrush(&colorref_to_d2d(colors.text_primary) as *const _, None)
@@ -3131,7 +3131,7 @@ pub unsafe fn draw_settings_panel(
 
     let fy = footer_y + 6.0;
     let footer_text1 = wide(&format!(
-        "ClaudeMeter v{} by klivak",
+        "ZaiMeter v{} by klivak",
         env!("CARGO_PKG_VERSION")
     ));
     let footer_format = d2d.get_text_format(10, false, 0, 0).clone();
@@ -3152,7 +3152,7 @@ pub unsafe fn draw_settings_panel(
         DWRITE_MEASURING_MODE_NATURAL,
     );
 
-    let footer_text2 = wide("github.com/klivak/claudemeter");
+    let footer_text2 = wide("github.com/klivak/zaimeter");
     let footer_link_brush = rt
         .CreateSolidColorBrush(&colorref_to_d2d(colors.accent) as *const _, None)
         .unwrap();

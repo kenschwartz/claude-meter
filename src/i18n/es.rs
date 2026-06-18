@@ -82,7 +82,7 @@ pub fn strings() -> HashMap<&'static str, &'static str> {
     m.insert("General", "General");
     m.insert("Back", "\u{2190} Volver");
     m.insert("Open Claude.ai \u{2192}", "Abrir Claude.ai \u{2192}");
-    m.insert("ClaudeMeter", "ClaudeMeter");
+    m.insert("ZaiMeter", "ZaiMeter");
     m.insert("CLAUDE", "CLAUDE");
     m.insert("CHATGPT / CODEX", "CHATGPT / CODEX");
     m.insert("Usage History", "Historial de uso");

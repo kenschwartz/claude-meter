@@ -1,19 +1,19 @@
 #!/bin/sh
 set -eu
 
-APP_NAME="ClaudeMeter"
-LABEL="com.klivak.claudemeter"
+APP_NAME="ZaiMeter"
+LABEL="com.klivak.zaimeter"
 PLIST_DIR="$HOME/Library/LaunchAgents"
 PLIST_PATH="$PLIST_DIR/$LABEL.plist"
 
 if [ $# -gt 0 ]; then
   BIN_PATH="$1"
-elif [ -x "/Applications/ClaudeMeter.app/Contents/MacOS/ClaudeMeter" ]; then
+elif [ -x "/Applications/ZaiMeter.app/Contents/MacOS/ZaiMeter" ]; then
   # Launch the bundle's executable directly. Going through /usr/bin/open
   # would exit immediately and, with KeepAlive, relaunch in a tight loop.
-  BIN_PATH="/Applications/ClaudeMeter.app/Contents/MacOS/ClaudeMeter"
+  BIN_PATH="/Applications/ZaiMeter.app/Contents/MacOS/ZaiMeter"
 else
-  BIN_PATH="$(cd "$(dirname "$0")/.." && pwd)/target/aarch64-apple-darwin/release/claudemeter"
+  BIN_PATH="$(cd "$(dirname "$0")/.." && pwd)/target/aarch64-apple-darwin/release/zaimeter"
 fi
 
 if [ ! -x "$BIN_PATH" ]; then
@@ -40,9 +40,9 @@ cat > "$PLIST_PATH" <<EOF
   <key>KeepAlive</key>
   <false/>
   <key>StandardOutPath</key>
-  <string>$HOME/Library/Logs/claudemeter.out.log</string>
+  <string>$HOME/Library/Logs/zaimeter.out.log</string>
   <key>StandardErrorPath</key>
-  <string>$HOME/Library/Logs/claudemeter.err.log</string>
+  <string>$HOME/Library/Logs/zaimeter.err.log</string>
 </dict>
 </plist>
 EOF

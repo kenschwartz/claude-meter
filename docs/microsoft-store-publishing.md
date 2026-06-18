@@ -1,6 +1,6 @@
-# Publishing ClaudeMeter to the Microsoft Store
+# Publishing ZaiMeter to the Microsoft Store
 
-A comprehensive guide for packaging and publishing ClaudeMeter (a Rust-based Windows system tray
+A comprehensive guide for packaging and publishing ZaiMeter (a Rust-based Windows system tray
 application) to the Microsoft Store, with an alternative section on winget distribution.
 
 **Last updated:** March 2025
@@ -21,13 +21,13 @@ application) to the Microsoft Store, with an alternative section on winget distr
 10. [Rust/Cargo-Specific Tools](#10-rustcargo-specific-tools)
 11. [Alternative: Publishing to winget](#11-alternative-publishing-to-winget)
 12. [Alternative: Unpackaged EXE Submission](#12-alternative-unpackaged-exe-submission)
-13. [Recommended Strategy for ClaudeMeter](#13-recommended-strategy-for-claudemeter)
+13. [Recommended Strategy for ZaiMeter](#13-recommended-strategy-for-zaimeter)
 
 ---
 
 ## 1. Overview of Distribution Options
 
-There are three main ways to distribute ClaudeMeter through Microsoft's ecosystem:
+There are three main ways to distribute ZaiMeter through Microsoft's ecosystem:
 
 | Method | Packaging | Signing | Store Listing | Auto-Update |
 |--------|-----------|---------|---------------|-------------|
@@ -35,7 +35,7 @@ There are three main ways to distribute ClaudeMeter through Microsoft's ecosyste
 | **Unpackaged EXE (Store)** | Just link to installer URL | Your own signing | Full Store page | You host the installer |
 | **winget** | None (bare .exe/.msi) | Optional | CLI only (`winget install`) | Manifest update via PR |
 
-For a small, portable .exe like ClaudeMeter, all three are viable. They can also be combined:
+For a small, portable .exe like ZaiMeter, all three are viable. They can also be combined:
 publish to the Store for discoverability while also maintaining a winget manifest for CLI users.
 
 ---
@@ -80,7 +80,7 @@ provides clean install/uninstall, sandboxing, and Store compatibility.
 ### 3.1 What You Need
 
 - **Windows 10 SDK** (includes `makeappx.exe` and `signtool.exe`)
-- **Your built `claudemeter.exe`** (release build, ~3 MB)
+- **Your built `zaimeter.exe`** (release build, ~3 MB)
 - **An `AppxManifest.xml`** file describing the package
 - **Visual assets** (icons at various sizes)
 - Optionally: **MSIX Packaging Tool** (free from Microsoft Store) for GUI-based packaging
@@ -88,7 +88,7 @@ provides clean install/uninstall, sandboxing, and Store compatibility.
 ### 3.2 AppxManifest.xml
 
 Create an `AppxManifest.xml` in a staging directory alongside your .exe. Here is a template
-tailored for ClaudeMeter:
+tailored for ZaiMeter:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -101,13 +101,13 @@ tailored for ClaudeMeter:
   IgnorableNamespaces="uap rescap desktop uap10">
 
   <Identity
-    Name="YourPublisherId.ClaudeMeter"
+    Name="YourPublisherId.ZaiMeter"
     Publisher="CN=Your Publisher Name"
     Version="1.10.3.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>ClaudeMeter</DisplayName>
+    <DisplayName>ZaiMeter</DisplayName>
     <PublisherDisplayName>klivak</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
     <Description>Monitor your Claude AI subscription usage in real-time from the system tray.</Description>
@@ -126,12 +126,12 @@ tailored for ClaudeMeter:
 
   <Applications>
     <Application
-      Id="ClaudeMeter"
-      Executable="claudemeter.exe"
+      Id="ZaiMeter"
+      Executable="zaimeter.exe"
       EntryPoint="Windows.FullTrustApplication">
 
       <uap:VisualElements
-        DisplayName="ClaudeMeter"
+        DisplayName="ZaiMeter"
         Description="Claude AI usage monitor for Windows"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
@@ -139,10 +139,10 @@ tailored for ClaudeMeter:
 
       <!-- Auto-start at login (replaces registry-based autostart) -->
       <Extensions>
-        <desktop:Extension Category="windows.startupTask" Executable="claudemeter.exe"
+        <desktop:Extension Category="windows.startupTask" Executable="zaimeter.exe"
                            EntryPoint="Windows.FullTrustApplication">
-          <desktop:StartupTask TaskId="ClaudeMeterStartup" Enabled="true"
-                               DisplayName="ClaudeMeter" />
+          <desktop:StartupTask TaskId="ZaiMeterStartup" Enabled="true"
+                               DisplayName="ZaiMeter" />
         </desktop:Extension>
       </Extensions>
 
@@ -163,7 +163,7 @@ tailored for ClaudeMeter:
 - `Version` must be in `Major.Minor.Build.Revision` format (4 parts).
 - `EntryPoint="Windows.FullTrustApplication"` is required for Win32 desktop apps.
 - `runFullTrust` capability is required for unpackaged Win32 apps running inside MSIX.
-- The `windows.startupTask` extension replaces ClaudeMeter's current registry-based autostart
+- The `windows.startupTask` extension replaces ZaiMeter's current registry-based autostart
   mechanism when running as an MSIX package.
 
 ### 3.3 Directory Layout
@@ -173,7 +173,7 @@ Create a staging directory with this structure:
 ```
 msix-staging/
   AppxManifest.xml
-  claudemeter.exe
+  zaimeter.exe
   Assets/
     StoreLogo.png           (50x50)
     Square44x44Logo.png     (44x44)
@@ -192,13 +192,13 @@ Using `makeappx.exe` from the Windows SDK:
 $makeappx = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe"
 
 # Create the MSIX package
-& $makeappx pack /d ".\msix-staging" /p "ClaudeMeter.msix" /v /h SHA256
+& $makeappx pack /d ".\msix-staging" /p "ZaiMeter.msix" /v /h SHA256
 ```
 
 Or if you prefer to use a mapping file:
 
 ```powershell
-& $makeappx pack /f "mapping.txt" /p "ClaudeMeter.msix" /v /h SHA256
+& $makeappx pack /f "mapping.txt" /p "ZaiMeter.msix" /v /h SHA256
 ```
 
 ### 3.5 MSIX Packaging Tool (GUI Alternative)
@@ -207,10 +207,10 @@ For a GUI-based approach:
 
 1. Install "MSIX Packaging Tool" from the Microsoft Store (free).
 2. Choose "Application package" > "Create your app package on this computer."
-3. Point it to `claudemeter.exe` as the installer.
+3. Point it to `zaimeter.exe` as the installer.
 4. The tool will capture the installation and produce an MSIX package.
 
-**Note:** Since ClaudeMeter is a portable .exe (no installer), the MSIX Packaging Tool's
+**Note:** Since ZaiMeter is a portable .exe (no installer), the MSIX Packaging Tool's
 capture-based approach is less ideal. The manual `makeappx.exe` method described above is
 more appropriate.
 
@@ -243,14 +243,14 @@ New-SelfSignedCertificate `
   -Type Custom `
   -Subject "CN=Your Publisher Name" `
   -KeyUsage DigitalSignature `
-  -FriendlyName "ClaudeMeter Dev Certificate" `
+  -FriendlyName "ZaiMeter Dev Certificate" `
   -CertStoreLocation "Cert:\CurrentUser\My" `
   -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
 
 # Export to PFX (for use with signtool)
 $cert = Get-ChildItem "Cert:\CurrentUser\My" | Where-Object { $_.Subject -eq "CN=Your Publisher Name" }
 $password = ConvertTo-SecureString -String "YourPassword" -Force -AsPlainText
-Export-PfxCertificate -Cert $cert -FilePath "ClaudeMeter.pfx" -Password $password
+Export-PfxCertificate -Cert $cert -FilePath "ZaiMeter.pfx" -Password $password
 ```
 
 ### 4.3 Signing the MSIX Package
@@ -259,7 +259,7 @@ Export-PfxCertificate -Cert $cert -FilePath "ClaudeMeter.pfx" -Password $passwor
 $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe"
 
 # Sign with PFX
-& $signtool sign /fd SHA256 /a /f "ClaudeMeter.pfx" /p "YourPassword" "ClaudeMeter.msix"
+& $signtool sign /fd SHA256 /a /f "ZaiMeter.pfx" /p "YourPassword" "ZaiMeter.msix"
 ```
 
 ### 4.4 For Sideloading (Outside the Store)
@@ -311,7 +311,7 @@ trusted by the end user's machine. Options:
 | Wide 310x150 tile | 310x150 | PNG | Optional, for Start menu tile |
 | Promotional trailer | -- | MP4 | Optional, up to 30 seconds |
 
-### 5.3 ClaudeMeter-Specific Listing Content
+### 5.3 ZaiMeter-Specific Listing Content
 
 **Suggested short description:**
 > Monitor your Claude AI subscription usage limits in real-time from the Windows system tray.
@@ -326,7 +326,7 @@ trusted by the end user's machine. Options:
 - Auto-start with Windows
 - No account needed -- reads existing Claude Code credentials
 
-**Privacy policy:** Required because ClaudeMeter accesses the Anthropic API (network access)
+**Privacy policy:** Required because ZaiMeter accesses the Anthropic API (network access)
 and reads credentials from Windows Credential Manager. Create a privacy policy page (can be
 hosted on GitHub Pages or the project's GitHub repository) that covers:
 - What data is accessed (OAuth token from local Credential Manager, API usage data)
@@ -334,7 +334,7 @@ hosted on GitHub Pages or the project's GitHub repository) that covers:
 - That all data stays on the user's machine
 - Contact information
 
-**Age rating:** Complete the IARC questionnaire. ClaudeMeter is a developer utility tool with no
+**Age rating:** Complete the IARC questionnaire. ZaiMeter is a developer utility tool with no
 objectionable content -- it will likely receive a "3+" or "Everyone" rating.
 
 ### References
@@ -350,7 +350,7 @@ objectionable content -- it will likely receive a "3+" or "Everyone" rating.
 
 1. **Reserve app name**
    - Go to Partner Center > Apps and Games > New product > MSIX or PWA app.
-   - Reserve "ClaudeMeter" as your app name.
+   - Reserve "ZaiMeter" as your app name.
    - This also generates your `Identity.Name` and `Identity.Publisher` values for the manifest.
 
 2. **Create submission**
@@ -408,7 +408,7 @@ objectionable content -- it will likely receive a "3+" or "Everyone" rating.
 
 ### Common Rejection Reasons (and How to Avoid Them)
 
-| Reason | Mitigation for ClaudeMeter |
+| Reason | Mitigation for ZaiMeter |
 |--------|---------------------------|
 | **App crashes or is not functional** | Test the MSIX package on a clean Windows install. Ensure the app works even without credentials (show a helpful message). |
 | **Missing privacy policy** | Host a privacy policy (e.g., on GitHub Pages) and provide the URL. |
@@ -435,11 +435,11 @@ objectionable content -- it will likely receive a "3+" or "Everyone" rating.
 
 ## 8. System Tray App Considerations
 
-ClaudeMeter is a system tray application, which introduces several packaging-specific concerns.
+ZaiMeter is a system tray application, which introduces several packaging-specific concerns.
 
 ### 8.1 Auto-Start Behavior
 
-ClaudeMeter currently uses the Windows registry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`)
+ZaiMeter currently uses the Windows registry (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`)
 for auto-start. Inside an MSIX container:
 
 - **Registry writes to `HKCU\...\Run` are virtualized** and may not persist across updates.
@@ -468,22 +468,22 @@ MSIX packages run in a lightweight container with file system virtualization:
 - **Config file location:** `std::env::current_exe()` parent directory will be inside the MSIX
   virtual file system, which is read-only. You need to use an app-writable location instead:
   - Use `%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalState\` for config.
-  - Or detect MSIX and use `%LOCALAPPDATA%\ClaudeMeter\` as a fallback.
+  - Or detect MSIX and use `%LOCALAPPDATA%\ZaiMeter\` as a fallback.
 - **SQLite database:** Same concern -- must be in a writable location.
 
 ### 8.3 Windows Credential Manager Access
 
-ClaudeMeter reads OAuth tokens from Windows Credential Manager. This works normally from inside
+ZaiMeter reads OAuth tokens from Windows Credential Manager. This works normally from inside
 MSIX -- `CredReadW` calls are not affected by MSIX virtualization. No changes needed.
 
 ### 8.4 Single-Instance Mutex
 
 Named mutexes (`CreateMutexW`) work normally inside MSIX. The existing
-`"ClaudeMeter-SingleInstance"` mutex will function correctly.
+`"ZaiMeter-SingleInstance"` mutex will function correctly.
 
 ### 8.5 Toast Notifications
 
-ClaudeMeter uses PowerShell-based toast notifications. Inside MSIX:
+ZaiMeter uses PowerShell-based toast notifications. Inside MSIX:
 - The app has a proper AppUserModelID (AUMID) assigned by the package.
 - PowerShell-based notifications should still work, but consider using the Windows notification
   API directly (via the `windows` crate) for better integration with the notification center.
@@ -491,7 +491,7 @@ ClaudeMeter uses PowerShell-based toast notifications. Inside MSIX:
 
 ### 8.6 Shell Extension Limitation
 
-MSIX does **not** support in-process shell extensions. ClaudeMeter does not use shell extensions,
+MSIX does **not** support in-process shell extensions. ZaiMeter does not use shell extensions,
 so this is not an issue.
 
 ---
@@ -507,9 +507,9 @@ When distributed through the Store:
 - Users can also manually check for updates in the Store app.
 - You publish a new version by creating a new submission with an updated MSIX package.
 
-### 9.2 ClaudeMeter's Built-In Updater
+### 9.2 ZaiMeter's Built-In Updater
 
-ClaudeMeter has its own update checker (`src/updater.rs`) that polls GitHub Releases. When
+ZaiMeter has its own update checker (`src/updater.rs`) that polls GitHub Releases. When
 distributed via the Store:
 
 - **Disable the built-in updater** for Store builds. The Store should be the sole update channel
@@ -569,12 +569,12 @@ building MSIX packages.
 The [msix](https://crates.io/crates/msix) crate is a Rust library for creating and signing MSIX
 packages programmatically. Could be used in a custom build script but requires manual integration.
 
-### 10.4 Recommended Approach for ClaudeMeter
+### 10.4 Recommended Approach for ZaiMeter
 
 Since cargo-msix is not ready, use the **manual approach**:
 
 1. Build with `cargo build --release`.
-2. Copy `claudemeter.exe` to a staging directory with `AppxManifest.xml` and assets.
+2. Copy `zaimeter.exe` to a staging directory with `AppxManifest.xml` and assets.
 3. Run `makeappx.exe pack` to create the `.msix`.
 4. Run `signtool.exe sign` to sign it.
 5. Automate steps 2-4 in a PowerShell script or GitHub Actions workflow.
@@ -584,7 +584,7 @@ Example automation script (`scripts/build-msix.ps1`):
 ```powershell
 param(
     [string]$Version = "1.10.3.0",
-    [string]$CertPath = "ClaudeMeter.pfx",
+    [string]$CertPath = "ZaiMeter.pfx",
     [string]$CertPassword
 )
 
@@ -593,7 +593,7 @@ $ErrorActionPreference = "Stop"
 # Paths
 $sdkBin = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64"
 $stagingDir = ".\msix-staging"
-$outputMsix = ".\ClaudeMeter-$Version.msix"
+$outputMsix = ".\ZaiMeter-$Version.msix"
 
 # Step 1: Build release
 Write-Host "Building release..."
@@ -606,7 +606,7 @@ New-Item -ItemType Directory -Path $stagingDir | Out-Null
 New-Item -ItemType Directory -Path "$stagingDir\Assets" | Out-Null
 
 # Copy binary
-Copy-Item "target\release\claudemeter.exe" "$stagingDir\"
+Copy-Item "target\release\zaimeter.exe" "$stagingDir\"
 
 # Copy manifest (update version in manifest first)
 $manifest = Get-Content "msix\AppxManifest.xml" -Raw
@@ -648,18 +648,18 @@ winget uses YAML manifest files in the [microsoft/winget-pkgs](https://github.co
 repository. For a single .exe, a singleton manifest is sufficient:
 
 ```yaml
-# manifests/k/klivak/ClaudeMeter/1.10.3/klivak.ClaudeMeter.yaml
-PackageIdentifier: klivak.ClaudeMeter
+# manifests/k/klivak/ZaiMeter/1.10.3/klivak.ZaiMeter.yaml
+PackageIdentifier: klivak.ZaiMeter
 PackageVersion: "1.10.3"
-PackageName: ClaudeMeter
+PackageName: ZaiMeter
 Publisher: klivak
 License: MIT
-LicenseUrl: https://github.com/klivak/claudemeter/blob/main/LICENSE
+LicenseUrl: https://github.com/klivak/zaimeter/blob/main/LICENSE
 ShortDescription: Monitor Claude AI subscription usage limits from the Windows system tray.
 Description: |-
-  ClaudeMeter is an ultra-lightweight Windows system tray application that monitors
+  ZaiMeter is an ultra-lightweight Windows system tray application that monitors
   Claude AI subscription usage limits in real-time. Under 10 MB RAM, single portable .exe.
-PackageUrl: https://github.com/klivak/claudemeter
+PackageUrl: https://github.com/klivak/zaimeter
 Tags:
   - claude
   - ai
@@ -669,11 +669,11 @@ Tags:
   - developer-tools
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/klivak/claudemeter/releases/download/v1.10.3/claudemeter.exe
+    InstallerUrl: https://github.com/klivak/zaimeter/releases/download/v1.10.3/zaimeter.exe
     InstallerSha256: <SHA256_HASH_OF_EXE>
     InstallerType: portable
     Commands:
-      - claudemeter
+      - zaimeter
 ManifestType: singleton
 ManifestVersion: 1.6.0
 ```
@@ -682,10 +682,10 @@ ManifestVersion: 1.6.0
 
 1. **Fork** https://github.com/microsoft/winget-pkgs
 2. **Create the manifest** file(s) in the correct path:
-   `manifests/k/klivak/ClaudeMeter/1.10.3/`
+   `manifests/k/klivak/ZaiMeter/1.10.3/`
 3. **Validate** locally:
    ```bash
-   winget validate manifests/k/klivak/ClaudeMeter/1.10.3/
+   winget validate manifests/k/klivak/ZaiMeter/1.10.3/
    ```
 4. **Submit a pull request** to the winget-pkgs repository.
 5. Automated bots validate the manifest and test the installer.
@@ -710,8 +710,8 @@ jobs:
     steps:
       - uses: vedantmgoyal9/winget-releaser@v2
         with:
-          identifier: klivak.ClaudeMeter
-          installers-regex: 'claudemeter\.exe$'
+          identifier: klivak.ZaiMeter
+          installers-regex: 'zaimeter\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
 ```
 
@@ -726,8 +726,8 @@ jobs:
 Microsoft's official tool for creating and updating winget manifests:
 
 ```bash
-wingetcreate new https://github.com/klivak/claudemeter/releases/download/v1.10.3/claudemeter.exe
-wingetcreate update klivak.ClaudeMeter --urls https://github.com/klivak/claudemeter/releases/download/v1.10.3/claudemeter.exe --version 1.10.3
+wingetcreate new https://github.com/klivak/zaimeter/releases/download/v1.10.3/zaimeter.exe
+wingetcreate update klivak.ZaiMeter --urls https://github.com/klivak/zaimeter/releases/download/v1.10.3/zaimeter.exe --version 1.10.3
 wingetcreate submit <manifest-path> --token <github-pat>
 ```
 
@@ -775,19 +775,19 @@ This is a good option if:
 
 ---
 
-## 13. Recommended Strategy for ClaudeMeter
+## 13. Recommended Strategy for ZaiMeter
 
 ### Phase 1: winget (Quick Win)
 
 1. Create a winget manifest for the current portable .exe release.
 2. Submit a PR to winget-pkgs.
 3. Set up the winget-releaser GitHub Action for automatic updates.
-4. **Effort:** ~1 hour. **Benefit:** `winget install klivak.ClaudeMeter` works for CLI users.
+4. **Effort:** ~1 hour. **Benefit:** `winget install klivak.ZaiMeter` works for CLI users.
 
 ### Phase 2: Microsoft Store (Unpackaged)
 
 1. Register a Partner Center individual account (free).
-2. Reserve the "ClaudeMeter" app name.
+2. Reserve the "ZaiMeter" app name.
 3. Create a Store listing with screenshots, description, and privacy policy.
 4. Submit the existing .exe via the unpackaged path.
 5. **Effort:** ~1 day (mostly creating assets and writing listings).

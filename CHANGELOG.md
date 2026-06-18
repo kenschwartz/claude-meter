@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to ClaudeMeter will be documented in this file.
+All notable changes to ZaiMeter will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -14,9 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Native macOS menu bar app** — added a Swift/AppKit `NSStatusItem` app with live percentage, freshness state, Refresh, Open Claude, update check, config import/export, logs, and autostart controls
-- **macOS `.app` bundle release** — CI now packages `ClaudeMeter.app` with the Rust polling agent embedded as `claudemeter-agent`
+- **macOS `.app` bundle release** — CI now packages `ZaiMeter.app` with the Rust polling agent embedded as `zaimeter-agent`
 - **macOS data freshness status** — the agent writes `status.json` with `Live`, `Refreshing`, cached/no-data, and API error states for the menu UI
-- **Portable macOS logs** — the macOS agent writes `claudemeter.log` under `~/Library/Application Support/ClaudeMeter`
+- **Portable macOS logs** — the macOS agent writes `zaimeter.log` under `~/Library/Application Support/ZaiMeter`
 - **Optional macOS notarization hook** — release workflow notarizes the app zip when Apple Developer secrets are configured
 
 ### Changed
@@ -72,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Network connectivity monitor** — detects network interface changes (e.g., WiFi reconnect) via Windows IP Helper API and triggers an immediate poll when connectivity is restored
 - **Sleep/wake progressive retry** — after resuming from sleep/hibernate, retries at 2s, 5s, 15s, 30s intervals instead of a single immediate poll; stops retrying on first successful response
 - **Subscription type badge** — the plan name (Pro, Max, Max 5X, Max 20X) is now displayed as a colored pill-shaped badge in the dashboard header instead of plain text
-- **Web API fallback** — when OAuth credentials are unavailable or expired, ClaudeMeter can optionally fall back to the claude.ai web API using session cookies; configure `web_api_session_key` and `web_api_org_id` in config.json
+- **Web API fallback** — when OAuth credentials are unavailable or expired, ZaiMeter can optionally fall back to the claude.ai web API using session cookies; configure `web_api_session_key` and `web_api_org_id` in config.json
 - **Aggregated notifications** — when multiple usage thresholds are crossed simultaneously, a single batched notification is shown instead of multiple separate alerts
 
 ### Fixed
@@ -105,7 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.2.3] - 2026-03-08
 
 ### Fixed
-- **Autostart broken after update** — removed version number from release binary filename so users can replace `claudemeter.exe` in-place without breaking the autostart registry path
+- **Autostart broken after update** — removed version number from release binary filename so users can replace `zaimeter.exe` in-place without breaking the autostart registry path
 
 ## [2.2.2] - 2026-03-07
 
