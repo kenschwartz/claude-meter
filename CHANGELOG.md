@@ -5,6 +5,25 @@ All notable changes to ZaiMeter will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] - 2026-06-18
+
+Retargeted from Claude/Windows to the z.ai GLM Coding Plan on macOS, and renamed
+ClaudeMeter to ZaiMeter. The z.ai backend is the default; the original Claude
+provider is retained behind a config flag.
+
+### Added
+- **z.ai (GLM Coding Plan) usage provider** - decodes the 5-hour and weekly token limits and the built-in tools quota from z.ai's account-monitoring API (`/api/monitor/usage/quota/limit`); default backend
+- **Provider config toggle** (`provider`: `zai` | `claude`) with a `Provider` dispatch enum; token read from `GLM_API_KEY` in `~/.hermes/.env` (mirrors the `zai` shell launcher)
+
+### Changed
+- **Renamed ClaudeMeter to ZaiMeter**: binary `zaimeter`, bundle id `com.klivak.zaimeter`, app bundle, app-data folder, LaunchAgent, menu bar, notifications, and i18n
+- **"Open Z.ai Usage"** opens the real z.ai coding-plan usage page
+- **plan_override is ignored for z.ai** so the API's own level (e.g. "GLM Max") is shown
+- History DB queries parameterized by provider (`query_24h_chart`, `query_recent_readings`)
+
+### Removed
+- **Update checker** (no fork releases to check)
+
 ## [4.0.1] - 2026-05-31
 
 ### Fixed

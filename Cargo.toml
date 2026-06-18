@@ -1,6 +1,6 @@
 [package]
 name = "zaimeter"
-version = "4.0.1"
+version = "5.0.0"
 edition = "2021"
 authors = ["klivak"]
 description = "Ultra-lightweight macOS menu-bar app for monitoring z.ai (GLM Coding Plan) usage limits. Built in Rust for minimal memory footprint (under 10 MB RAM)."

@@ -1767,7 +1767,7 @@ dependencies = [
 
 [[package]]
 name = "zaimeter"
-version = "4.0.1"
+version = "5.0.0"
 dependencies = [
  "chrono",
  "env_logger",
