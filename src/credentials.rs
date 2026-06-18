@@ -51,6 +51,70 @@ pub fn read_claude_token() -> Result<CredentialInfo, CredentialError> {
     read_token_from_credential_manager()
 }
 
+/// Read the z.ai (GLM Coding Plan) bearer token.
+///
+/// Resolution order matches the `zai` shell launcher (~/.zshrc):
+/// 1. `GLM_API_KEY` in `~/.hermes/.env` (canonical fleet secrets file, 0600).
+/// 2. `ANTHROPIC_AUTH_TOKEN` env var (how the launcher injects it at runtime).
+/// 3. `GLM_API_KEY` env var.
+///
+/// The token is a fleet secret (Permanent Constraint #2): read it, never log
+/// or persist it elsewhere.
+pub fn read_zai_token() -> Result<CredentialInfo, CredentialError> {
+    if let Some(key) = read_glm_api_key_from_env_file() {
+        return Ok(bare_token(key));
+    }
+    for var in ["ANTHROPIC_AUTH_TOKEN", "GLM_API_KEY"] {
+        if let Ok(val) = std::env::var(var) {
+            if !val.is_empty() {
+                return Ok(bare_token(val));
+            }
+        }
+    }
+    Err(CredentialError::NotFound)
+}
+
+fn bare_token(token: String) -> CredentialInfo {
+    CredentialInfo {
+        access_token: token,
+        subscription_type: None,
+        rate_limit_tier: None,
+        expires_at: None,
+    }
+}
+
+/// Pull `GLM_API_KEY=` out of ~/.hermes/.env. None if the file or key is
+/// absent. See [`glm_api_key_from_contents`] for the parsing rules.
+fn read_glm_api_key_from_env_file() -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let env_path = std::path::Path::new(&home).join(".hermes").join(".env");
+    let contents = std::fs::read_to_string(env_path).ok()?;
+    glm_api_key_from_contents(&contents)
+}
+
+/// Extract the last non-empty `GLM_API_KEY` value from .env-style contents.
+/// Tolerates optional whitespace around `=` and surrounding quotes, and ignores
+/// look-alike keys (`GLM_API_KEY_BACKUP`). A strict superset of the `KEY=value`
+/// shape the `zai` shell function expects. None if absent.
+fn glm_api_key_from_contents(contents: &str) -> Option<String> {
+    let mut last: Option<String> = None;
+    for line in contents.lines() {
+        // Split on the first `=` so a value may contain `=`, and so a look-alike
+        // key (`GLM_API_KEY_BACKUP`) cannot match.
+        let Some((key, val)) = line.split_once('=') else {
+            continue;
+        };
+        if key.trim() != "GLM_API_KEY" {
+            continue;
+        }
+        let val = val.trim().trim_matches(['"', '\'']);
+        if !val.is_empty() {
+            last = Some(val.to_string());
+        }
+    }
+    last
+}
+
 /// Read token from ~/.claude/.credentials.json
 fn read_token_from_file() -> Result<CredentialInfo, CredentialError> {
     let home = std::env::var("USERPROFILE")
@@ -197,6 +261,37 @@ fn extract_credential_info(json: &str) -> Result<CredentialInfo, CredentialError
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_glm_api_key_from_contents_variants() {
+        // Standard form.
+        assert_eq!(
+            glm_api_key_from_contents("GLM_API_KEY=sk-abc\n"),
+            Some("sk-abc".to_string())
+        );
+        // Whitespace around `=` and the value is tolerated.
+        assert_eq!(
+            glm_api_key_from_contents("GLM_API_KEY =  sk-abc  \n"),
+            Some("sk-abc".to_string())
+        );
+        // Surrounding quotes are stripped.
+        assert_eq!(
+            glm_api_key_from_contents("GLM_API_KEY=\"sk-abc\"\n"),
+            Some("sk-abc".to_string())
+        );
+        // A look-alike key must not match.
+        assert_eq!(
+            glm_api_key_from_contents("GLM_API_KEY_BACKUP=sk-abc\n"),
+            None
+        );
+        // Last non-empty match wins.
+        assert_eq!(
+            glm_api_key_from_contents("GLM_API_KEY=first\nOTHER=x\nGLM_API_KEY=second\n"),
+            Some("second".to_string())
+        );
+        // Absent.
+        assert_eq!(glm_api_key_from_contents("OTHER=x\n"), None);
+    }
 
     #[test]
     fn test_extract_nested() {

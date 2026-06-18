@@ -416,7 +416,7 @@ unsafe fn run_message_loop(exe_dir: std::path::PathBuf, config_mgr: ConfigManage
                     state.last_updated = "(cached)".to_string();
                 }
             }
-            if let Ok(slots) = db.query_24h_chart() {
+            if let Ok(slots) = db.query_24h_chart("claude") {
                 state.chart_data = slots;
             }
             if let Ok(slots) = db.query_7d_chart() {
@@ -2125,7 +2125,7 @@ unsafe fn on_poll_result(hwnd: HWND, result: PollResult) {
                     for (key, utilization, resets_at) in &metrics {
                         let _ = db.insert("claude", key, *utilization, resets_at.as_deref());
                     }
-                    let chart_data = db.query_24h_chart().unwrap_or_default();
+                    let chart_data = db.query_24h_chart("claude").unwrap_or_default();
                     let chart_data_7d = db.query_7d_chart().unwrap_or_default();
                     let chart_data_30d = db.query_30d_chart().unwrap_or_default();
                     let rate_of_change = db.query_rate_of_change(60).unwrap_or_default();

@@ -227,7 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         menu.addItem(NSMenuItem.separator())
         menu.addItem(item("Refresh Now", #selector(refreshAction)))
-        menu.addItem(item("Open Claude Usage", #selector(openClaude)))
+        menu.addItem(item("Open Z.ai Usage", #selector(openClaude)))
         menu.addItem(item("Check for Updates", #selector(checkForUpdates)))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(item("Open Config", #selector(openConfig)))
@@ -449,7 +449,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openClaude() {
-        NSWorkspace.shared.open(URL(string: "https://claude.ai/settings/usage")!)
+        NSWorkspace.shared.open(URL(string: "https://z.ai")!)
     }
 
     @objc private func checkForUpdates() {

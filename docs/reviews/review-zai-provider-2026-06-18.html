@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: z.ai provider (2026-06-18)</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --fg:#e6edf3; --muted:#9da7b3; --accent:#2f81f7; --ok:#3fb950; --warn:#f0883e; --code:#1f2630; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 -apple-system,BlinkMacFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:860px; margin:0 auto; padding:28px 22px 64px; }
+  h1 { font-size:23px; margin:0 0 2px; }
+  .tag { color:var(--muted); font-style:italic; margin:0 0 18px; }
+  .verdict { background:linear-gradient(135deg,#0f2d1a,#0a2415); border:1px solid var(--ok); border-radius:10px; padding:14px 16px; margin:14px 0; font-size:17px; }
+  .verdict strong { color:var(--ok); }
+  h2 { font-size:17px; margin:24px 0 8px; padding-bottom:5px; border-bottom:1px solid var(--border); color:var(--accent); }
+  code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  code { background:var(--code); padding:2px 5px; border-radius:4px; font-size:13px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin:12px 0; }
+  table { width:100%; border-collapse:collapse; margin:10px 0; font-size:14px; }
+  th,td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  ul { margin:6px 0 6px 4px; padding-left:20px; }
+  li { margin:3px 0; }
+  .ok { color:var(--ok); } .note { color:var(--warn); } .muted { color:var(--muted); }
+  footer { margin-top:36px; color:var(--muted); font-size:12px; border-top:1px solid var(--border); padding-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Review: z.ai (GLM Coding Plan) usage provider</h1>
+<p class="tag">Branch feat/zai-provider vs feat/free-flush-celebration. Reviewer: DeepSeek (fleet seat hermes-rev1). Builder: GLM-5.2 (host). 2026-06-18.</p>
+
+<div class="verdict"><strong>VERDICT: MERGE.</strong> All seven load-bearing invariants verified clean. Three NOTE-level findings, one applied.</div>
+
+<h2>What was built</h2>
+<div class="panel">
+A new z.ai provider for the macOS menu-bar meter, made the default backend. z.ai's <code>/api/monitor/usage/quota/limit</code> is decoded into the existing <code>UsageResponse</code> shape:
+<ul>
+  <li><code>TOKENS_LIMIT unit=3 number=5</code> &rarr; <code>five_hour</code> (5-hour token limit)</li>
+  <li><code>TOKENS_LIMIT unit=6 number=1</code> &rarr; <code>seven_day</code> (weekly token limit)</li>
+  <li><code>TIME_LIMIT</code> &rarr; extra <code>tools_5h</code></li>
+  <li><code>data.level</code> &rarr; plan label ("max" &rarr; "GLM Max")</li>
+</ul>
+Token read from <code>GLM_API_KEY</code> in <code>~/.hermes/.env</code> (mirrors the <code>zai</code> shell launcher). Claude kept behind a config flag.
+</div>
+
+<h2>Invariants verified clean (no findings)</h2>
+<table>
+  <tr><th>Invariant</th><th>Result</th></tr>
+  <tr><td>Token exposure (never logged / persisted / in an error string)</td><td class="ok">CLEAN</td></tr>
+  <tr><td>Metric keys <code>five_hour</code>/<code>seven_day</code> preserved (Swift title + chart SQL depend on them)</td><td class="ok">PRESERVED</td></tr>
+  <tr><td>Claude <code>plan_override</code> ("Max 20x") does not leak into z.ai display</td><td class="ok">GATED</td></tr>
+  <tr><td>Decode has no <code>unwrap</code>/<code>expect</code>/panic on live API data; <code>as_i64()</code> overflow safe</td><td class="ok">SAFE</td></tr>
+  <tr><td><code>db.rs</code> parameterization: all callers updated (Windows included), correct <code>?1/?2/?3</code> binds, no injection</td><td class="ok">CORRECT</td></tr>
+  <tr><td>Provider dispatch: z.ai arm skips the Claude credential-stamp; fetch correct for both arms</td><td class="ok">CORRECT</td></tr>
+  <tr><td>Borrow / move / dead-code / clippy-class</td><td class="ok">CLEAN</td></tr>
+</table>
+
+<h2>Findings (all NOTE)</h2>
+
+<div class="panel">
+<strong class="note">NOTE &middot; src/providers/mod.rs &middot; REJECTED.</strong>
+The <code>|_||</code> in the z.ai credential-error path discards the <code>CredentialError</code> variant. The reviewer suggested <code>format!("[cred] ... {e}")</code>, but that would embed <code>CredentialError::NotFound</code>'s Display, which is the Claude-specific text "Claude Code credentials not found in ~/.claude/.credentials.json" - wrong for z.ai. The current clear z.ai message is more accurate, and <code>read_zai_token</code> only ever returns <code>NotFound</code> today. No change.
+</div>
+
+<div class="panel">
+<strong class="note">NOTE &middot; src/providers/zai.rs &middot; REJECTED.</strong>
+<code>detected_plan()</code> could return a bare Claude name if z.ai ever returned a raw "max" level. Non-issue: the adapter always GLM-prefixes via <code>format!("GLM {}", title_case(level))</code>, so the "max"/"pro" literal arms in <code>detected_plan()</code> are never reached for z.ai. Reviewer confirmed "the guard works." No change.
+</div>
+
+<div class="panel">
+<strong class="note">NOTE &middot; src/credentials.rs &middot; APPLIED.</strong>
+The <code>~/.hermes/.env</code> parser silently skipped <code>GLM_API_KEY = token</code> (whitespace around <code>=</code>). For a long-running GUI meter a silent "token not found" on a whitespace variant is poor UX. Fix applied: split on the first <code>=</code> and trim both sides (a strict superset of the <code>KEY=value</code> shape, also rejecting look-alike keys like <code>GLM_API_KEY_BACKUP</code>). Extracted <code>glm_api_key_from_contents()</code> and locked it with a regression test covering whitespace, quotes, look-alikes, and last-match-wins.
+</div>
+
+<h2>Host verification</h2>
+<div class="panel">
+<ul>
+  <li><code>cargo fmt --check</code>: clean</li>
+  <li><code>cargo clippy --all-targets --all-features -- -D warnings</code>: clean (zero warnings)</li>
+  <li><code>cargo test</code>: <strong>55 passed, 0 failed</strong></li>
+  <li>Live <code>--once</code> smoke vs the real z.ai account: status.json matched the API exactly - <code>five_hour</code> 6%, <code>seven_day</code> 2%, <code>tools_5h</code> 1%, plan <code>GLM Max</code></li>
+  <li>No em dashes introduced by this diff (21 pre-existing on the base branch, out of scope).</li>
+</ul>
+</div>
+
+<footer>Panel run: bounded build on host (macOS Swift/Rust cannot build in the Linux fleet container), cross-family review on the fleet. Merge target feat/free-flush-celebration.</footer>
+
+</div>
+</body>
+</html>

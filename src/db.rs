@@ -70,16 +70,16 @@ impl Database {
         Ok(())
     }
 
-    /// Query last 24 hours of `five_hour` metric, bucketed into 30-minute intervals.
-    /// Always returns exactly 48 elements (oldest first: index 0 = 24h ago, index 47 = now).
-    /// Missing slots are filled with 0.0.
-    pub fn query_24h_chart(&self) -> SqlResult<Vec<f64>> {
+    /// Query last 24 hours of `five_hour` metric for `provider`, bucketed into
+    /// 30-minute intervals. Always returns exactly 48 elements (oldest first:
+    /// index 0 = 24h ago, index 47 = now). Missing slots are filled with 0.0.
+    pub fn query_24h_chart(&self, provider: &str) -> SqlResult<Vec<f64>> {
         let mut stmt = self.conn.prepare(
             "SELECT
                 CAST((julianday('now') - julianday(timestamp)) * 48 AS INTEGER) AS bucket,
                 AVG(utilization) AS avg_util
              FROM usage_history
-             WHERE provider = 'claude'
+             WHERE provider = ?1
                AND metric = 'five_hour'
                AND resets_at IS NOT NULL
                AND timestamp > datetime('now', '-24 hours')
@@ -88,7 +88,9 @@ impl Database {
 
         let mut slots = vec![0.0f64; 48];
 
-        let rows = stmt.query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, f64>(1)?)))?;
+        let rows = stmt.query_map(params![provider], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, f64>(1)?))
+        })?;
 
         for row in rows.flatten() {
             let (bucket, util) = row;
@@ -187,26 +189,27 @@ impl Database {
         Ok(rows.flatten().collect())
     }
 
-    /// Recent readings for one metric, oldest-first: (timestamp, utilization,
-    /// resets_at). Used by the macOS startup backfill to find a free flush that
-    /// happened while the app was down or being upgraded.
+    /// Recent readings for one metric of `provider`, oldest-first: (timestamp,
+    /// utilization, resets_at). Used by the macOS startup backfill to find a
+    /// free flush that happened while the app was down or being upgraded.
     #[cfg_attr(windows, allow(dead_code))] // consumed by the macOS app
     pub fn query_recent_readings(
         &self,
         metric: &str,
         days: i64,
+        provider: &str,
     ) -> SqlResult<Vec<(String, f64, Option<String>)>> {
         let cutoff = format!("-{days} days");
         let mut stmt = self.conn.prepare(
             "SELECT timestamp, utilization, resets_at
              FROM usage_history
-             WHERE provider = 'claude'
+             WHERE provider = ?3
                AND metric = ?1
                AND timestamp > datetime('now', ?2)
              ORDER BY timestamp ASC",
         )?;
 
-        let rows = stmt.query_map(params![metric, cutoff], |row| {
+        let rows = stmt.query_map(params![metric, cutoff, provider], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, f64>(1)?,
@@ -357,7 +360,7 @@ mod tests {
     #[test]
     fn test_query_24h_chart_returns_48_slots() {
         let db = Database::open_in_memory().unwrap();
-        let slots = db.query_24h_chart().unwrap();
+        let slots = db.query_24h_chart("claude").unwrap();
         assert_eq!(slots.len(), 48);
     }
 
@@ -386,7 +389,7 @@ mod tests {
             Some("2025-11-04T05:00:00+00:00"),
         )
         .unwrap();
-        let slots = db.query_24h_chart().unwrap();
+        let slots = db.query_24h_chart("claude").unwrap();
         // The newest slot (index 47) should have data
         assert!(slots[47] > 0.0);
     }
@@ -448,7 +451,7 @@ mod tests {
             .unwrap();
         // A different metric must not leak in.
         db.insert("claude", "five_hour", 10.0, Some("b")).unwrap();
-        let rows = db.query_recent_readings("seven_day", 8).unwrap();
+        let rows = db.query_recent_readings("seven_day", 8, "claude").unwrap();
         assert_eq!(rows.len(), 2);
         // Oldest first.
         assert_eq!(rows[0].1, 54.0);
