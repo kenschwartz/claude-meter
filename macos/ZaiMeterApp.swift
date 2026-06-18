@@ -228,7 +228,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
         menu.addItem(item("Refresh Now", #selector(refreshAction)))
         menu.addItem(item("Open Z.ai Usage", #selector(openClaude)))
-        menu.addItem(item("Check for Updates", #selector(checkForUpdates)))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(item("Open Config", #selector(openConfig)))
         menu.addItem(item("Export Config...", #selector(exportConfig)))
@@ -450,27 +449,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openClaude() {
         NSWorkspace.shared.open(URL(string: "https://z.ai/manage-apikey/coding-plan/personal/usage")!)
-    }
-
-    @objc private func checkForUpdates() {
-        let url = URL(string: "https://api.github.com/repos/klivak/zaimeter/releases/latest")!
-        URLSession.shared.dataTask(with: url) { data, _, _ in
-            guard let data,
-                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let tag = object["tag_name"] as? String,
-                  let html = object["html_url"] as? String else {
-                self.notify("ZaiMeter", "Could not check for updates.")
-                return
-            }
-            if tag == "v4.0.1" {
-                self.notify("ZaiMeter", "You are running the latest version.")
-            } else {
-                self.notify("ZaiMeter Update", "\(tag) is available.")
-                if let url = URL(string: html) {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-        }.resume()
     }
 
     @objc private func openConfig() {

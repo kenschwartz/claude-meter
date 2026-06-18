@@ -1,136 +1,122 @@
-# CLAUDE.md — Project Instructions for AI Assistants
+# CLAUDE.md - Project Instructions for AI Assistants
 
-> This file provides context and rules for Claude Code and other AI coding assistants
-> working on the ZaiMeter project.
+> Context and rules for Claude Code and other AI assistants working on ZaiMeter.
 
 ## Project Summary
 
-ZaiMeter is an ultra-lightweight Windows system tray application written in Rust that monitors
-Claude AI subscription usage limits in real-time. It uses under 10 MB RAM, compiles to a single
-portable .exe with zero runtime dependencies, and targets Windows 10/11 (x86_64).
+ZaiMeter is a macOS menu-bar app that monitors **z.ai GLM Coding Plan** usage limits
+(5-hour + weekly token limits) in real time. It is a two-process app: a Rust "agent"
+binary polls the z.ai API on an interval and writes a JSON state file; a native Swift
+menu-bar app (AppKit) reads that file and renders the status item, dropdown, 24h chart,
+and a "free weekly flush" celebration.
 
-Author: klivak | License: MIT | Repo: github.com/klivak/zaimeter
+The z.ai provider is the default. The original Claude (Anthropic) provider is kept behind
+a config flag for parity, but the app's purpose is z.ai.
 
-## Build & Run
+Forked from klivak/ClaudeMeter (a Windows Claude tray app). macOS-only in practice; the
+Windows sources remain in tree under `cfg(windows)` but are not the target.
+
+Author: klivak (upstream) | Fork: z.ai GLM Coding Plan | License: MIT
+
+## Build & Run (macOS)
 
 ```bash
-# Development build
+# Rust agent only (host target) - fast dev loop
 cargo build
+cargo run -- --once        # single poll, writes status.json, exits
 
-# Release build (optimized for size)
-cargo build --release
-
-# Run (development)
-cargo run
-
-# Run release binary directly
-./target/release/zaimeter.exe
-```
-
-Output binary: `target/release/zaimeter.exe` (~3 MB)
-
-## Lint & Format
-
-```bash
-# Format code
+# Lint / format / test (clippy must pass with ZERO warnings)
 cargo fmt
-
-# Lint with Clippy (must pass with zero warnings)
 cargo clippy --all-targets --all-features -- -D warnings
+cargo test
 
-# Security audit
-cargo audit
+# Full native .app (release cargo for aarch64-apple-darwin + swiftc)
+scripts/build-macos-app.sh          # -> target/aarch64-apple-darwin/release/ZaiMeter.app
+
+# Install + autostart
+ditto target/aarch64-apple-darwin/release/ZaiMeter.app /Applications/ZaiMeter.app
+scripts/install-macos-launchagent.sh   # writes/loads ~/Library/LaunchAgents/com.klivak.zaimeter.plist
 ```
 
-## Architecture Overview
+The agent accepts `--once` (single poll + exit), `--refresh` (same), `--status` (print
+status.json), or `--agent` (run by the Swift UI). Default is the poll loop.
 
-- `src/main.rs` — Entry point, single-instance mutex, tray init, tokio runtime
-- `src/config.rs` — JSON config read/write, defaults, hot-reload
-- `src/credentials.rs` — Windows Credential Manager access (CredReadW)
-- `src/db.rs` — SQLite history (rusqlite with bundled feature)
-- `src/tray.rs` — System tray icon, tooltip, context menu (Win32 API)
-- `src/popup.rs` — Dashboard popup window (Win32 API, GDI)
-- `src/notifications.rs` — Windows toast notifications (PowerShell-based)
-- `src/autostart.rs` — Registry-based auto-start
-- `src/theme.rs` — Dark/Light/Auto theme detection from Windows registry
-- `src/i18n/` — Localization: en, uk, es, de, fr, pt, ja, ko, zh, it (HashMap-based, compiled in)
-- `src/widget.rs` — Mini floating always-on-top widget (Win32 API, GDI)
-- `src/updater.rs` — Auto-update checker (GitHub Releases API)
-- `src/providers/claude.rs` — Anthropic OAuth Usage API client
-- `src/ui/` — Rendering logic, colors, progress bars
+## Architecture
 
-## Key Technical Decisions
+**Two processes, one JSON file.** No IPC, no sockets.
 
-1. **Native Win32 API only** — No Electron, no webview, no GTK, no Qt. All UI via `windows` crate.
-2. **rustls-tls** — No OpenSSL dependency. TLS via rustls for zero native TLS deps.
-3. **SQLite bundled** — `rusqlite` with `bundled` feature compiles SQLite into binary.
-4. **Single .exe** — No DLLs, no config files required (config auto-created on first run).
-5. **Async with tokio** — Minimal features: rt, macros, time, sync, net, io-util.
-6. **Future-proof API parsing** — Unknown API fields with valid `{utilization, resets_at}` structure are auto-displayed.
-7. **PowerShell notifications** — Toast notifications via PowerShell to avoid winrt-notification dependency.
+- Rust agent (`src/macos_app.rs` -> binary `zaimeter`, bundled as `zaimeter-agent`):
+  reads config + token, constructs a `Provider`, polls on `polling_interval_seconds`,
+  writes `~/Library/Application Support/ZaiMeter/status.json` and appends to
+  `zaimeter.db` (SQLite history) each poll.
+- Swift UI (`macos/ZaiMeterApp.swift` -> `ZaiMeter`): `NSStatusItem` menu-bar app. Spawns
+  the agent as a child, reads `status.json` every 5s, renders title/dropdown/chart/celebration.
+
+State lives in `~/Library/Application Support/ZaiMeter/`: `status.json`, `zaimeter.db`,
+`zaimeter.log`, `config.json`, `celebrate_state.json`.
+
+### Source map
+- `src/main.rs` - entry; cfg-gates to `macos_app::run()` on macOS, `windows_app::run()` on Windows.
+- `src/macos_app.rs` - the macOS agent: poll loop, credential/fetch via `Provider`, history save, `publish_status` (writes status.json), free-flush celebration logic.
+- `src/providers/mod.rs` - `Provider` enum (`Claude` | `Zai`) with `fetch()` (reads its own credential + fetches) and `name()`/`login_hint()`.
+- `src/providers/zai.rs` - `ZaiClient`: hits z.ai `quota/limit`, decodes into `UsageResponse`.
+- `src/providers/claude.rs` - `ClaudeClient` + the shared `UsageResponse` / `UsageMetric` types all providers return.
+- `src/credentials.rs` - `read_claude_token()` (Anthropic OAuth) and `read_zai_token()` (GLM_API_KEY).
+- `src/config.rs` - `Config` (incl. `provider`), load/save, mtime hot-reload, `validate()`.
+- `src/db.rs` - SQLite `usage_history` (provider, metric, utilization, resets_at); chart/readings queries are provider-parameterized.
+- `macos/ZaiMeterApp.swift` - the native menu-bar UI.
+
+## z.ai Usage API (verified)
+
+All `GET`, header `Authorization: Bearer <GLM_API_KEY>`.
+
+`https://api.z.ai/api/monitor/usage/quota/limit` -> `{ code, success, msg, data: { level, limits: [...] } }`.
+Each limit has `type`, `unit`, `number`, `percentage`, `nextResetTime` (epoch ms). Decode
+(in `zai.rs`, confirmed against the live account + `opencode-glm-quota`):
+- `TOKENS_LIMIT` unit=3 number=5 -> `five_hour` (5-hour token limit)
+- `TOKENS_LIMIT` unit=6 number=1 -> `seven_day` (weekly token limit)
+- `TIME_LIMIT` -> extra `tools_5h` (built-in tools quota)
+- `data.level` ("max"/"pro"/"free"/...) -> plan label "GLM Max" etc.
+
+`https://api.z.ai/manage-apikey/coding-plan/personal/usage` is the human-facing usage page
+(the "Open Z.ai Usage" menu item).
+
+**Token source:** `GLM_API_KEY` in `~/.hermes/.env` (canonical fleet secrets file, 0600),
+mirroring the `zai` shell launcher. Fallbacks: `ANTHROPIC_AUTH_TOKEN`, then `GLM_API_KEY`
+env vars. The token is a secret - read it, never log it, never persist it elsewhere.
+
+## Config (`config.json`)
+
+Key fields:
+- `provider`: `"zai"` (default) or `"claude"` - selects the backend.
+- `polling_interval_seconds`: poll cadence (min 60).
+- `plan_override`: Claude tier label (Pro/Max 5x/Max 20x); **ignored for z.ai**.
+- `celebrate_free_flush` + tunables: the weekly-flush party.
+- `show_startup_notification`, `theme`, etc.
+
+Missing fields default in via `#[serde(default = ...)]`; `validate()` coerces bad values.
 
 ## Conventions
 
-- **Error handling:** Never panic in release. Use `Result<>` everywhere. Show last known data on API failures.
-- **Logging:** Use `log` crate with `env_logger`. Default level: `warn`. Set `RUST_LOG=debug` for verbose.
-- **Config:** All user-facing settings in `config.json` next to .exe. No registry for config. No AppData.
-- **i18n:** All user-visible strings must go through `t("key")` function. Never hardcode display text.
-- **Theme:** All colors must come from `colors.rs` theme palette. Never hardcode color values in rendering code.
-- **Memory:** Keep allocations minimal. No caching of large data structures. Target: under 10 MB RSS.
-- **Naming:** snake_case for files/functions, PascalCase for types/structs, SCREAMING_SNAKE for constants.
+- **No em dashes anywhere** (output, comments, docs, code, commits). Use a hyphen, colon, or rephrase.
+- **clippy must pass with zero warnings** (`-D warnings`).
+- **Error handling:** never panic in release; `Result<>` everywhere; keep last-known data on API failure.
+- **i18n (`src/i18n/`) is Windows-only** (`#[cfg(windows)]`); the macOS UI hardcodes its strings.
+- **Naming:** snake_case files/functions, PascalCase types.
 
-## API Reference
+## Invariants (load-bearing - do not break)
 
-### Claude Usage API
-```
-GET https://api.anthropic.com/api/oauth/usage
-Authorization: Bearer <oauth_token>
-anthropic-beta: oauth-2025-04-20
-```
-Returns JSON with keys like `five_hour`, `seven_day`, `seven_day_sonnet`, `seven_day_opus`.
-Each non-null key has `{utilization: f64, resets_at: Option<String>}`.
+- Metric keys `"five_hour"` and `"seven_day"` are emitted by both providers and selected on
+  by the Swift title/pace logic and the `query_24h_chart` SQL. Do not rename them.
+- `status.json` is provider-neutral (state/title/detail/plan/percent/metrics/tier_note/
+  last_api_update/data_age_seconds/error/chart/chart_resets/celebrate). Changing its schema
+  breaks the Swift reader.
+- The GLM_API_KEY token must never reach a log line, status.json, the DB, an error string, or a notification.
+- Builds clean: `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`.
 
-### OAuth Token Location
-Windows Credential Manager → target: `"Claude Code-credentials"`
-Stored as JSON: `{"claudeAiOauth": {"accessToken": "<oauth-token>"}}`
+## Testing
 
-## Testing Notes
-
-- No test suite yet (GUI-heavy app). Manual testing workflow:
-  1. Build release: `cargo build --release`
-  2. Run the .exe
-  3. Verify tray icon appears
-  4. Hover → check tooltip
-  5. Left-click → check popup renders correctly
-  6. Right-click → check context menu
-  7. Change theme/language in settings → verify immediate effect
-  8. Kill network → verify graceful fallback ("Last updated X min ago")
-- CI runs: clippy, fmt, audit, deny (see `.github/workflows/audit.yml`)
-
-## Release Process
-
-```bash
-# 1. Update version in Cargo.toml, CHANGELOG.md, VERSION
-# 2. Update README.md if any user-facing features, settings, or languages changed
-# 3. Commit
-git add -A && git commit -m "release: v1.x.x"
-
-# 4. Tag and push — GitHub Actions builds and publishes automatically
-git tag v1.x.x
-git push origin main --tags
-```
-
-**Pre-release checklist:**
-- [ ] README.md reflects all new features, settings, config fields, and language count
-- [ ] CHANGELOG.md has an entry for the new version
-- [ ] Version updated in Cargo.toml and VERSION
-
-## Common Pitfalls
-
-- **Win32 tooltip limit:** `NOTIFYICONDATA.szTip` max 128 chars. Truncate gracefully.
-- **DPI scaling:** Always use `app.manifest` with PerMonitorV2. Test on 150%/200% scaling.
-- **Credential Manager encoding:** `CredReadW` blob may be UTF-16 or UTF-8. Handle both.
-- **Single instance:** Named mutex `"ZaiMeter-SingleInstance"` prevents duplicate processes.
-- **Config path:** Use `std::env::current_exe()` parent dir, NOT working directory.
-- **PCWSTR vs PWSTR:** Use PCWSTR for read-only string params in Win32 registry/cred APIs.
-- **windows crate 0.58:** RegQueryValueExW returns WIN32_ERROR, use `.is_ok()` or `.ok()`.
+`cargo test` covers the provider decoders, config validation, db queries, and the
+celebration flush logic. There is no GUI test harness; verify UI changes by building the
+`.app` and watching the menu bar. A quick data-layer check: `cargo run -- --once` then
+inspect `~/Library/Application Support/ZaiMeter/status.json`.
