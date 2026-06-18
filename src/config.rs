@@ -57,6 +57,10 @@ pub struct CustomColors {
 pub struct Config {
     pub version: String,
     pub polling_interval_seconds: u64,
+    /// Which usage backend to poll: "zai" (GLM Coding Plan, default) or
+    /// "claude". Must stay in sync with providers::Provider::name().
+    #[serde(default = "default_provider")]
+    pub provider: String,
     pub notifications: NotificationConfig,
     pub autostart: bool,
     pub compact_mode: bool,
@@ -128,6 +132,10 @@ fn default_celebrate_tolerance_seconds() -> i64 {
     3600
 }
 
+fn default_provider() -> String {
+    "zai".to_string()
+}
+
 fn default_dashboard_layout() -> String {
     "standard".to_string()
 }
@@ -145,6 +153,7 @@ impl Default for Config {
         Self {
             version: "1.0.0".to_string(),
             polling_interval_seconds: 120,
+            provider: "zai".to_string(),
             notifications: NotificationConfig::default(),
             autostart: false,
             compact_mode: false,
@@ -207,6 +216,11 @@ impl Config {
         self.notifications.thresholds.dedup();
         if self.notifications.thresholds.is_empty() {
             self.notifications.thresholds = vec![50, 75, 90];
+        }
+
+        // Validate provider backend
+        if !["zai", "claude"].contains(&self.provider.as_str()) {
+            self.provider = "zai".to_string();
         }
 
         // Validate theme

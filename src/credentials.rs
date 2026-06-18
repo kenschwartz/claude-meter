@@ -51,6 +51,59 @@ pub fn read_claude_token() -> Result<CredentialInfo, CredentialError> {
     read_token_from_credential_manager()
 }
 
+/// Read the z.ai (GLM Coding Plan) bearer token.
+///
+/// Resolution order matches the `zai` shell launcher (~/.zshrc):
+/// 1. `GLM_API_KEY` in `~/.hermes/.env` (canonical fleet secrets file, 0600).
+/// 2. `ANTHROPIC_AUTH_TOKEN` env var (how the launcher injects it at runtime).
+/// 3. `GLM_API_KEY` env var.
+///
+/// The token is a fleet secret (Permanent Constraint #2): read it, never log
+/// or persist it elsewhere.
+pub fn read_zai_token() -> Result<CredentialInfo, CredentialError> {
+    if let Some(key) = read_glm_api_key_from_env_file() {
+        return Ok(bare_token(key));
+    }
+    for var in ["ANTHROPIC_AUTH_TOKEN", "GLM_API_KEY"] {
+        if let Ok(val) = std::env::var(var) {
+            if !val.is_empty() {
+                return Ok(bare_token(val));
+            }
+        }
+    }
+    Err(CredentialError::NotFound)
+}
+
+fn bare_token(token: String) -> CredentialInfo {
+    CredentialInfo {
+        access_token: token,
+        subscription_type: None,
+        rate_limit_tier: None,
+        expires_at: None,
+    }
+}
+
+/// Pull `GLM_API_KEY=` out of ~/.hermes/.env. Last non-empty match wins,
+/// quotes and surrounding whitespace stripped (same parser as the `zai` shell
+/// function). None if the file or key is absent.
+fn read_glm_api_key_from_env_file() -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let env_path = std::path::Path::new(&home).join(".hermes").join(".env");
+    let contents = std::fs::read_to_string(env_path).ok()?;
+    let mut last: Option<String> = None;
+    for line in contents.lines() {
+        let trimmed = line.trim_start();
+        let Some(rest) = trimmed.strip_prefix("GLM_API_KEY=") else {
+            continue;
+        };
+        let val = rest.trim().trim_matches(['"', '\'']);
+        if !val.is_empty() {
+            last = Some(val.to_string());
+        }
+    }
+    last
+}
+
 /// Read token from ~/.claude/.credentials.json
 fn read_token_from_file() -> Result<CredentialInfo, CredentialError> {
     let home = std::env::var("USERPROFILE")

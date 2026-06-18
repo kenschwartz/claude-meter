@@ -1,7 +1,7 @@
 use crate::config::ConfigManager;
-use crate::credentials::read_claude_token;
 use crate::db::Database;
 use crate::providers::claude::{format_metric_name, ClaudeClient, UsageResponse};
+use crate::providers::{Provider, ZaiClient};
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -85,7 +85,7 @@ impl MacStatus {
         Self {
             state: "refreshing".to_string(),
             title: "Refreshing...".to_string(),
-            detail: "Requesting fresh Claude usage data".to_string(),
+            detail: "Requesting fresh usage data".to_string(),
             plan: None,
             percent: None,
             metrics: Vec::new(),
@@ -143,14 +143,25 @@ pub fn run() {
         .expect("failed to create tokio runtime");
 
     rt.block_on(async move {
-        let client = match ClaudeClient::new() {
-            Ok(client) => client,
-            Err(e) => {
-                let message = format!("Failed to create Claude client: {e}");
-                append_log(&exe_dir, &message);
-                write_error(&exe_dir, message);
-                return;
-            }
+        let provider = match config_mgr.config.provider.as_str() {
+            "claude" => match ClaudeClient::new() {
+                Ok(client) => Provider::Claude(client),
+                Err(e) => {
+                    let message = format!("Failed to create Claude client: {e}");
+                    append_log(&exe_dir, &message);
+                    write_error(&exe_dir, message);
+                    return;
+                }
+            },
+            _ => match ZaiClient::new() {
+                Ok(client) => Provider::Zai(client),
+                Err(e) => {
+                    let message = format!("Failed to create Z.ai client: {e}");
+                    append_log(&exe_dir, &message);
+                    write_error(&exe_dir, message);
+                    return;
+                }
+            },
         };
 
         let plan_override = config_mgr.config.plan_override.clone();
@@ -164,12 +175,12 @@ pub fn run() {
 
         // Resume a party that is still live in the history but was never
         // recorded (app down or pre-feature when the flush happened).
-        backfill_celebration(&exe_dir, celebration);
+        backfill_celebration(&exe_dir, celebration, provider.name());
 
         if once {
             poll_once(
                 &exe_dir,
-                &client,
+                &provider,
                 login_warning,
                 plan_override.as_deref(),
                 celebration,
@@ -185,7 +196,7 @@ pub fn run() {
         loop {
             poll_once(
                 &exe_dir,
-                &client,
+                &provider,
                 login_warning,
                 plan_override.as_deref(),
                 celebration,
@@ -199,45 +210,30 @@ pub fn run() {
 
 async fn poll_once(
     exe_dir: &Path,
-    client: &ClaudeClient,
+    provider: &Provider,
     login_warning_enabled: bool,
     plan_override: Option<&str>,
     celebration: CelebrationCfg,
 ) {
     mark_refreshing(exe_dir);
 
-    let credential = match read_claude_token() {
-        Ok(credential) => credential,
-        Err(e) => {
-            let message = format!("Claude credentials unavailable: {e}");
-            append_log(exe_dir, &message);
-            if login_warning_enabled {
-                notify(
-                    "ClaudeMeter",
-                    "Claude login not found. Run `claude` in Terminal.",
-                );
-            }
-            write_error(exe_dir, message);
-            return;
-        }
-    };
-
-    let mut usage = match client.fetch_usage(&credential.access_token).await {
+    let usage = match provider.fetch().await {
         Ok(usage) => usage,
         Err(e) => {
-            let message = format!("Usage poll failed: {e}");
-            append_log(exe_dir, &message);
-            write_error(exe_dir, message);
+            append_log(exe_dir, &format!("Usage poll failed: {e}"));
+            // A missing credential (vs a transport/API failure) gets the
+            // provider-appropriate login hint as a notification.
+            if login_warning_enabled && e.starts_with("[cred]") {
+                notify("ClaudeMeter", provider.login_hint());
+            }
+            write_error(exe_dir, e);
             return;
         }
     };
 
-    usage.subscription_type = credential.subscription_type;
-    usage.rate_limit_tier = credential.rate_limit_tier;
-
-    save_history(exe_dir, &usage);
+    save_history(exe_dir, &usage, provider.name());
     let celebrate = update_celebration(exe_dir, &usage, celebration);
-    publish_status(exe_dir, &usage, plan_override, celebrate);
+    publish_status(exe_dir, &usage, plan_override, provider.name(), celebrate);
 }
 
 /// Detect and track a "free flush". Returns Some(active party) when the menu
@@ -382,7 +378,7 @@ fn detect_live_flush(
 /// was never recorded (app was down or pre-feature when the flush happened).
 /// No-op if a party is already active (the per-poll detector owns it) or if the
 /// db/history is unavailable.
-fn backfill_celebration(exe_dir: &Path, cfg: CelebrationCfg) {
+fn backfill_celebration(exe_dir: &Path, cfg: CelebrationCfg, provider: &str) {
     if !cfg.enabled {
         return;
     }
@@ -392,7 +388,7 @@ fn backfill_celebration(exe_dir: &Path, cfg: CelebrationCfg) {
     let Ok(db) = Database::open(exe_dir) else {
         return;
     };
-    let Ok(readings) = db.query_recent_readings("seven_day", 8) else {
+    let Ok(readings) = db.query_recent_readings("seven_day", 8, provider) else {
         return;
     };
     if let Some(idx) = detect_live_flush(&readings, cfg) {
@@ -441,7 +437,7 @@ fn save_celebrate_state(exe_dir: &Path, st: &CelebrateState) {
     }
 }
 
-fn save_history(exe_dir: &Path, usage: &UsageResponse) {
+fn save_history(exe_dir: &Path, usage: &UsageResponse, provider: &str) {
     let db = match Database::open(exe_dir) {
         Ok(db) => db,
         Err(e) => {
@@ -452,7 +448,7 @@ fn save_history(exe_dir: &Path, usage: &UsageResponse) {
 
     for (metric, value) in usage.all_metrics() {
         if let Err(e) = db.insert(
-            "claude",
+            provider,
             &metric,
             value.utilization,
             value.resets_at.as_deref(),
@@ -466,12 +462,19 @@ fn publish_status(
     exe_dir: &Path,
     usage: &UsageResponse,
     plan_override: Option<&str>,
+    provider: &str,
     celebrate: Option<Celebrate>,
 ) {
     let percent = usage.max_utilization().unwrap_or(0.0).round() as u32;
-    let plan = plan_override
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| usage.detected_plan());
+    // plan_override is a Claude tier label (Pro/Max 5x/Max 20x); ignore it for
+    // z.ai so the API's own level ("GLM Max") is shown.
+    let plan = if provider == "claude" {
+        plan_override
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| usage.detected_plan())
+    } else {
+        usage.detected_plan()
+    };
     let now = Local::now();
     let last_api_update = now.to_rfc3339();
     let message = format!("{plan}: {percent}% max usage");
@@ -487,12 +490,18 @@ fn publish_status(
         })
         .collect();
 
-    let tier_note = plan_override.and_then(|p| build_tier_note(p, usage));
+    // The downgrade-comparison tier math is Claude-specific (Pro/Max 5x/Max
+    // 20x multipliers); skip it for z.ai.
+    let tier_note = if provider == "claude" {
+        plan_override.and_then(|p| build_tier_note(p, usage))
+    } else {
+        None
+    };
 
     // 24h history for the menu-bar chart. save_history() already inserted this
     // poll's reading, so reopening the DB here picks up the freshest bucket.
     let chart = Database::open(exe_dir)
-        .and_then(|db| db.query_24h_chart())
+        .and_then(|db| db.query_24h_chart(provider))
         .map(|slots| slots.iter().map(|v| v.round() as u32).collect())
         .unwrap_or_default();
 
