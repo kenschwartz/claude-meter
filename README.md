@@ -56,6 +56,27 @@ scripts/install-macos-launchagent.sh
 Then launch it: `open /Applications/ZaiMeter.app` (or log out/in - the LaunchAgent starts
 it automatically).
 
+## Sharing
+
+The built app carries no secret. `scripts/build-macos-app.sh` bundles only the Rust binary,
+the Swift UI, and the icon PNGs; your `GLM_API_KEY` is read fresh at runtime
+(`src/credentials.rs`), never compiled in. You can hand the `.app` to someone else without
+leaking your key.
+
+The shareable artifact is `target/aarch64-apple-darwin/release/ZaiMeter-macos-arm64.app.zip`.
+Notes for the recipient:
+
+- **Apple Silicon only.** The build targets `aarch64-apple-darwin`, so it won't run on Intel.
+- **Gatekeeper blocks the first launch.** The app is ad-hoc signed, so macOS flags it as an
+  unidentified developer. Right-click the app > **Open** > confirm, or strip the quarantine
+  flag once: `xattr -dr com.apple.quarantine /Applications/ZaiMeter.app`.
+- **They supply their own key.** Have them set up their own `GLM_API_KEY` per
+  [Requirements](#requirements) above. Don't send yours; it's a secret and it spends your
+  quota.
+- **Autostart at login.** `scripts/install-macos-launchagent.sh` (in this repo) wires up the
+  LaunchAgent; without it, the recipient can add `ZaiMeter.app` under System Settings >
+  General > Login Items.
+
 ## How it works
 
 Two processes share one JSON file (`~/Library/Application Support/ZaiMeter/status.json`):
