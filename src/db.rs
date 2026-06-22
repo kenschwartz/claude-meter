@@ -439,15 +439,20 @@ mod tests {
     #[test]
     fn test_query_recent_readings_ordered() {
         let db = Database::open_in_memory().unwrap();
-        db.insert_at(
-            "2026-06-13 00:00:00",
-            "claude",
-            "seven_day",
-            54.0,
-            Some("a"),
-        )
-        .unwrap();
-        db.insert_at("2026-06-13 00:02:00", "claude", "seven_day", 0.0, Some("a"))
+        // Anchor to now: fixed dates age out of the recency window over time.
+        let base = chrono::Utc::now()
+            .checked_sub_signed(chrono::Duration::days(2))
+            .unwrap();
+        let older = format!("{}", base.format("%Y-%m-%d %H:%M:%S"));
+        let newer = format!(
+            "{}",
+            base.checked_add_signed(chrono::Duration::minutes(2))
+                .unwrap()
+                .format("%Y-%m-%d %H:%M:%S")
+        );
+        db.insert_at(&older, "claude", "seven_day", 54.0, Some("a"))
+            .unwrap();
+        db.insert_at(&newer, "claude", "seven_day", 0.0, Some("a"))
             .unwrap();
         // A different metric must not leak in.
         db.insert("claude", "five_hour", 10.0, Some("b")).unwrap();
