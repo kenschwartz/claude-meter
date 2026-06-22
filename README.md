@@ -33,7 +33,9 @@ a small celebration when your weekly counter gets a "free flush" (resets out of 
   e.g. in `~/.zshenv`: `export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH"`.
 - A z.ai GLM Coding Plan subscription.
 - Your z.ai token as `GLM_API_KEY` in `~/.hermes/.env` (the same file the `zai` shell
-  launcher reads). Fallbacks: the `ANTHROPIC_AUTH_TOKEN` or `GLM_API_KEY` env vars.
+  launcher reads). Fallbacks: the `ANTHROPIC_AUTH_TOKEN` or `GLM_API_KEY` env vars, but
+  those only apply to a shell launch; the autostart LaunchAgent passes no environment, so
+  at login only the `~/.hermes/.env` file source is read.
 
 ## Build & install
 
