@@ -5,6 +5,11 @@ All notable changes to ZaiMeter will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Test suite no longer time-rots** - `test_query_recent_readings_ordered` used fixed 2026-06-13 fixtures inside an 8-day recency window, turning the released 5.0.0 suite red after ~2026-06-21. Anchored to UTC now minus 2 days. Test-only; no binary change.
+
 ## [5.0.0] - 2026-06-18
 
 Retargeted from Claude/Windows to the z.ai GLM Coding Plan on macOS, and renamed

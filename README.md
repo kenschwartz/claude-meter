@@ -27,6 +27,10 @@ a small celebration when your weekly counter gets a "free flush" (resets out of 
 ## Requirements
 
 - macOS on Apple Silicon (the build targets `aarch64-apple-darwin`).
+- The Rust toolchain (stable, `aarch64-apple-darwin`) and Xcode Command Line Tools
+  (`swiftc`, `sips`, `codesign`). If `cargo` is not on PATH (common with Homebrew
+  `rustup`, which ships no `~/.cargo/bin` proxies), add the toolchain bin to PATH,
+  e.g. in `~/.zshenv`: `export PATH="$HOME/.rustup/toolchains/stable-aarch64-apple-darwin/bin:$PATH"`.
 - A z.ai GLM Coding Plan subscription.
 - Your z.ai token as `GLM_API_KEY` in `~/.hermes/.env` (the same file the `zai` shell
   launcher reads). Fallbacks: the `ANTHROPIC_AUTH_TOKEN` or `GLM_API_KEY` env vars.
